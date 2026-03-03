@@ -6,7 +6,6 @@ use App\Repository\LaundryExceptionalClosureRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: LaundryExceptionalClosureRepository::class)]
-#[ORM\Table(name: 'laverie_fermeture_exceptionnelle')]
 class LaundryExceptionalClosure
 {
     #[ORM\Id]

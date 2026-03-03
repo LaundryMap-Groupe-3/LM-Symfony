@@ -7,7 +7,6 @@ use App\Repository\LaundryNoteReportRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: LaundryNoteReportRepository::class)]
-#[ORM\Table(name: 'laverie_note_signalement')]
 class LaundryNoteReport
 {
     #[ORM\Id]

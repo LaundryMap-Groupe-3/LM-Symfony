@@ -9,7 +9,6 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ProfessionalRepository::class)]
-#[ORM\Table(name: 'professionnel')]
 class Professional
 {
     #[ORM\Id]

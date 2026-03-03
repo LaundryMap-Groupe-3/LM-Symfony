@@ -6,7 +6,6 @@ use App\Repository\OffensiveWordRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: OffensiveWordRepository::class)]
-#[ORM\Table(name: 'mot_injurieux')]
 class OffensiveWord
 {
     #[ORM\Id]

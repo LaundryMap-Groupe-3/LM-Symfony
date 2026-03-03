@@ -8,7 +8,6 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PaymentMethodRepository::class)]
-#[ORM\Table(name: 'methode_paiement')]
 class PaymentMethod
 {
     #[ORM\Id]

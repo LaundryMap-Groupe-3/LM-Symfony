@@ -6,7 +6,6 @@ use App\Repository\MediaRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: MediaRepository::class)]
-#[ORM\Table(name: 'media')]
 class Media
 {
     #[ORM\Id]

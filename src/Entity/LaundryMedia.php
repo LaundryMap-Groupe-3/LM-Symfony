@@ -6,7 +6,6 @@ use App\Repository\LaundryMediaRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: LaundryMediaRepository::class)]
-#[ORM\Table(name: 'laverie_media')]
 class LaundryMedia
 {
     #[ORM\Id]

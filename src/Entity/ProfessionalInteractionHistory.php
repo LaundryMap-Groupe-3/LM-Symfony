@@ -7,7 +7,6 @@ use App\Repository\ProfessionalInteractionHistoryRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ProfessionalInteractionHistoryRepository::class)]
-#[ORM\Table(name: 'professionnel_historique_interaction')]
 class ProfessionalInteractionHistory
 {
     #[ORM\Id]

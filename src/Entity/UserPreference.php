@@ -7,7 +7,6 @@ use App\Repository\UserPreferenceRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: UserPreferenceRepository::class)]
-#[ORM\Table(name: 'utilisateur_preference')]
 class UserPreference
 {
     #[ORM\Id]

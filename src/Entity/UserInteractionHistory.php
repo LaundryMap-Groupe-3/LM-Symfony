@@ -7,7 +7,6 @@ use App\Repository\UserInteractionHistoryRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: UserInteractionHistoryRepository::class)]
-#[ORM\Table(name: 'utilisateur_historique_interaction')]
 class UserInteractionHistory
 {
     #[ORM\Id]

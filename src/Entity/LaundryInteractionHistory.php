@@ -7,7 +7,6 @@ use App\Repository\LaundryInteractionHistoryRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: LaundryInteractionHistoryRepository::class)]
-#[ORM\Table(name: 'laverie_historique_interaction')]
 class LaundryInteractionHistory
 {
     #[ORM\Id]
