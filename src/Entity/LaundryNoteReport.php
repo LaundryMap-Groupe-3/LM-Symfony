@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\LaundryNoteReportReasonEnum;
 use App\Repository\LaundryNoteReportRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -22,9 +23,8 @@ class LaundryNoteReport
     #[ORM\Column(type: 'datetime')]
     private \DateTimeInterface $createdAt;
 
-    // Voir pour l'enum
-    #[ORM\Column(length: 255)]
-    private string $reason;
+    #[ORM\Column(type: 'string', enumType: LaundryNoteReportReasonEnum::class)]
+    private LaundryNoteReportReasonEnum $reason;
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $comment = null;
@@ -62,12 +62,12 @@ class LaundryNoteReport
         return $this;
     }
 
-    public function getReason(): string
+    public function getReason(): LaundryNoteReportReasonEnum
     {
         return $this->reason;
     }
 
-    public function setReason(string $reason): static
+    public function setReason(LaundryNoteReportReasonEnum $reason): static
     {
         $this->reason = $reason;
         return $this;

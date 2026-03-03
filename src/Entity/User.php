@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\UserStatusEnum;
 use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -28,9 +29,8 @@ class User
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $password = null;
 
-    // Voir pour l'enum
-    #[ORM\Column(length: 255)]
-    private string $status;
+    #[ORM\Column(type: 'string', enumType: UserStatusEnum::class)]
+    private UserStatusEnum $status;
 
     #[ORM\Column(type: 'datetime')]
     private \DateTimeInterface $createdAt;
@@ -119,12 +119,12 @@ class User
         return $this;
     }
 
-    public function getStatus(): string
+    public function getStatus(): UserStatusEnum
     {
         return $this->status;
     }
 
-    public function setStatus(string $status): static
+    public function setStatus(UserStatusEnum $status): static
     {
         $this->status = $status;
         return $this;

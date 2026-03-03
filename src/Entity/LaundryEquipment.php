@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\LaundryEquipmentTypeEnum;
 use App\Repository\LaundryEquipmentRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -25,9 +26,8 @@ class LaundryEquipment
     private string $name;
 
 
-    // Voir pour l'enum
-    #[ORM\Column(length: 255)]
-    private string $type;
+    #[ORM\Column(type: 'string', enumType: LaundryEquipmentTypeEnum::class)]
+    private LaundryEquipmentTypeEnum $type;
 
     #[ORM\Column]
     private int $capacity;
@@ -76,12 +76,12 @@ class LaundryEquipment
         return $this;
     }
 
-    public function getType(): string
+    public function getType(): LaundryEquipmentTypeEnum
     {
         return $this->type;
     }
 
-    public function setType(string $type): static
+    public function setType(LaundryEquipmentTypeEnum $type): static
     {
         $this->type = $type;
         return $this;

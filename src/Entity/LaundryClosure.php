@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\DayOfWeekEnum;
 use App\Repository\LaundryClosureRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -18,9 +19,8 @@ class LaundryClosure
     #[ORM\JoinColumn(nullable: false)]
     private Laundry $laundry;
 
-    // Voir pour l'enum
-    #[ORM\Column(length: 255)]
-    private string $day;
+    #[ORM\Column(type: 'string', enumType: DayOfWeekEnum::class)]
+    private DayOfWeekEnum $day;
 
     #[ORM\Column(type: 'datetime')]
     private \DateTimeInterface $createdAt;
@@ -50,12 +50,12 @@ class LaundryClosure
         return $this;
     }
 
-    public function getDay(): string
+    public function getDay(): DayOfWeekEnum
     {
         return $this->day;
     }
 
-    public function setDay(string $day): static
+    public function setDay(DayOfWeekEnum $day): static
     {
         $this->day = $day;
         return $this;

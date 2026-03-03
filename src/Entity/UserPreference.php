@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\ThemeEnum;
 use App\Repository\UserPreferenceRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -22,8 +23,8 @@ class UserPreference
     #[ORM\JoinColumn(nullable: false)]
     private ?Language $language = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $theme = null;
+    #[ORM\Column(type: 'string', enumType: ThemeEnum::class, nullable: true)]
+    private ?ThemeEnum $theme = null;
 
     #[ORM\Column]
     private bool $notifications = false;
@@ -55,12 +56,12 @@ class UserPreference
         return $this;
     }
 
-    public function getTheme(): ?string
+    public function getTheme(): ?ThemeEnum
     {
         return $this->theme;
     }
 
-    public function setTheme(string $theme): static
+    public function setTheme(?ThemeEnum $theme): static
     {
         $this->theme = $theme;
         return $this;

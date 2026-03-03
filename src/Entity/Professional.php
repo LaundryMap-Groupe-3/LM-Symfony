@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\ProfessionalStatusEnum;
 use App\Repository\ProfessionalRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -23,9 +24,8 @@ class Professional
     #[ORM\Column]
     private int $siren;
 
-    // Voir pour l'enum
-    #[ORM\Column(length: 255)]
-    private string $status;
+    #[ORM\Column(type: 'string', enumType: ProfessionalStatusEnum::class)]
+    private ProfessionalStatusEnum $status;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $validationDate = null;
@@ -73,12 +73,12 @@ class Professional
         return $this;
     }
 
-    public function getStatus(): string
+    public function getStatus(): ProfessionalStatusEnum
     {
         return $this->status;
     }
 
-    public function setStatus(string $status): static
+    public function setStatus(ProfessionalStatusEnum $status): static
     {
         $this->status = $status;
         return $this;

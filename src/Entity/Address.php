@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\GeolocalizationStatusEnum;
 use App\Repository\AddressRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -35,9 +36,8 @@ class Address
     #[ORM\Column(type: 'float', nullable: true)]
     private ?float $longitude = null;
 
-    // A voir pour l'enum 
-    #[ORM\Column(length: 255)]
-    private string $geolocalizationStatus;
+    #[ORM\Column(type: 'string', enumType: GeolocalizationStatusEnum::class)]
+    private GeolocalizationStatusEnum $geolocalizationStatus;
 
     public function getId(): int
     {
@@ -121,12 +121,12 @@ class Address
         return $this;
     }
 
-    public function getGeolocalizationStatus(): string
+    public function getGeolocalizationStatus(): GeolocalizationStatusEnum
     {
         return $this->geolocalizationStatus;
     }
 
-    public function setGeolocalizationStatus(string $geolocalizationStatus): static
+    public function setGeolocalizationStatus(GeolocalizationStatusEnum $geolocalizationStatus): static
     {
         $this->geolocalizationStatus = $geolocalizationStatus;
         return $this;

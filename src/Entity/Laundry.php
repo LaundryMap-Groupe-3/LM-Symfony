@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\LaundryStatusEnum;
 use App\Repository\LaundryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -20,9 +21,8 @@ class Laundry
     #[ORM\JoinColumn(nullable: false)]
     private Professional $professional;
 
-    // Voir pour l'enum
-    #[ORM\Column(length: 255)]
-    private string $status;
+    #[ORM\Column(type: 'string', enumType: LaundryStatusEnum::class)]
+    private LaundryStatusEnum $status;
 
     #[ORM\Column(nullable: true)]
     private ?int $wiLineReference = null;
@@ -109,12 +109,12 @@ class Laundry
         return $this;
     }
 
-    public function getStatus(): string
+    public function getStatus(): LaundryStatusEnum
     {
         return $this->status;
     }
 
-    public function setStatus(string $status): static
+    public function setStatus(LaundryStatusEnum $status): static
     {
         $this->status = $status;
         return $this;

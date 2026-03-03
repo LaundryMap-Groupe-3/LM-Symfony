@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\InteractionActionEnum;
 use App\Repository\UserInteractionHistoryRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -22,9 +23,8 @@ class UserInteractionHistory
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
-    // Voir pour l'enum
-    #[ORM\Column(length: 255)]
-    private string $action;
+    #[ORM\Column(type: 'string', enumType: InteractionActionEnum::class)]
+    private InteractionActionEnum $action;
 
     #[ORM\Column(length: 255)]
     private string $actionReason;
@@ -59,12 +59,12 @@ class UserInteractionHistory
         return $this;
     }
 
-    public function getAction(): string
+    public function getAction(): InteractionActionEnum
     {
         return $this->action;
     }
 
-    public function setAction(string $action): static
+    public function setAction(InteractionActionEnum $action): static
     {
         $this->action = $action;
         return $this;
