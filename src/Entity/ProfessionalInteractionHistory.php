@@ -1,0 +1,93 @@
+<?php
+
+namespace App\Entity;
+
+use App\Enum\InteractionActionEnum;
+use App\Repository\ProfessionalInteractionHistoryRepository;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity(repositoryClass: ProfessionalInteractionHistoryRepository::class)]
+class ProfessionalInteractionHistory
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
+    private int $id;
+
+    #[ORM\ManyToOne(inversedBy: 'professionalInteractionHistories')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Admin $admin = null;
+
+    #[ORM\ManyToOne(inversedBy: 'professionalInteractionHistories')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Professional $professional = null;
+
+    #[ORM\Column(type: 'string', enumType: InteractionActionEnum::class)]
+    private InteractionActionEnum $action;
+
+    #[ORM\Column(length: 255)]
+    private string $actionReason;
+
+    #[ORM\Column(type: 'datetime')]
+    private \DateTimeInterface $createdAt;
+
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
+    public function getAdmin(): ?Admin
+    {
+        return $this->admin;
+    }
+
+    public function setAdmin(Admin $admin): static
+    {
+        $this->admin = $admin;
+        return $this;
+    }
+
+    public function getProfessional(): ?Professional
+    {
+        return $this->professional;
+    }
+
+    public function setProfessional(Professional $professional): static
+    {
+        $this->professional = $professional;
+        return $this;
+    }
+
+    public function getAction(): InteractionActionEnum
+    {
+        return $this->action;
+    }
+
+    public function setAction(InteractionActionEnum $action): static
+    {
+        $this->action = $action;
+        return $this;
+    }
+
+    public function getActionReason(): string
+    {
+        return $this->actionReason;
+    }
+
+    public function setActionReason(string $actionReason): static
+    {
+        $this->actionReason = $actionReason;
+        return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeInterface
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeInterface $createdAt): static
+    {
+        $this->createdAt = $createdAt;
+        return $this;
+    }
+}
