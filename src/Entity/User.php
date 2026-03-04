@@ -7,28 +7,11 @@ use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[OA\Schema(
-    schema: 'User',
-    title: 'User',
-    description: 'Modèle Utilisateur',
-    type: 'object',
-    properties: [
-        new OA\Property(property: 'id',          type: 'integer', description: 'Identifiant',        example: 1),
-        new OA\Property(property: 'email',        type: 'string',  description: 'Email',              example: 'user@example.com'),
-        new OA\Property(property: 'firstName',    type: 'string',  description: 'Prénom',             example: 'Mathis',           nullable: true),
-        new OA\Property(property: 'lastName',     type: 'string',  description: 'Nom',                example: 'Dauguet',          nullable: true),
-        new OA\Property(property: 'status',       type: 'string',  description: 'Statut',             example: 'verified'),
-        new OA\Property(property: 'createdAt',    type: 'string',  description: 'Date de création',   example: '2026-03-04 09:31:05'),
-        new OA\Property(property: 'updatedAt',    type: 'string',  description: 'Date de mise à jour', example: null,              nullable: true),
-        new OA\Property(property: 'lastLoginAt',  type: 'string',  description: 'Dernière connexion', example: null,               nullable: true),
-    ]
-)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]

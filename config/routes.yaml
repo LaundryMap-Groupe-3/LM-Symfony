@@ -9,6 +9,3 @@
 
 controllers:
     resource: routing.controllers
-
-nelmio_api_doc:
-    resource: routes/nelmio_api_doc.yaml
