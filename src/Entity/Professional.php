@@ -7,9 +7,10 @@ use App\Repository\ProfessionalRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: ProfessionalRepository::class)]
-class Professional
+class Professional implements UserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -43,6 +44,19 @@ class Professional
     {
         $this->laundries = new ArrayCollection();
         $this->professionalInteractionHistories = new ArrayCollection();
+    }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->user->getUserIdentifier();
+    }
+
+    public function getRoles(): array {
+        return ['ROLE_PROFESSIONAL'];
+    }
+    
+    public function eraseCredentials(): void
+    {
     }
 
     public function getId(): int

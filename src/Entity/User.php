@@ -7,40 +7,68 @@ use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use OpenApi\Attributes as OA;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User
+#[OA\Schema(
+    schema: 'User',
+    title: 'User',
+    description: 'Modèle Utilisateur',
+    type: 'object',
+    properties: [
+        new OA\Property(property: 'id',          type: 'integer', description: 'Identifiant',        example: 1),
+        new OA\Property(property: 'email',        type: 'string',  description: 'Email',              example: 'user@example.com'),
+        new OA\Property(property: 'firstName',    type: 'string',  description: 'Prénom',             example: 'Mathis',           nullable: true),
+        new OA\Property(property: 'lastName',     type: 'string',  description: 'Nom',                example: 'Dauguet',          nullable: true),
+        new OA\Property(property: 'status',       type: 'string',  description: 'Statut',             example: 'verified'),
+        new OA\Property(property: 'createdAt',    type: 'string',  description: 'Date de création',   example: '2026-03-04 09:31:05'),
+        new OA\Property(property: 'updatedAt',    type: 'string',  description: 'Date de mise à jour', example: null,              nullable: true),
+        new OA\Property(property: 'lastLoginAt',  type: 'string',  description: 'Dernière connexion', example: null,               nullable: true),
+    ]
+)]
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['user:read'])]
     private int $id;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['user:read'])]
     private string $email;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read'])]
     private ?string $lastName = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $password = null;
 
     #[ORM\Column(type: 'string', enumType: UserStatusEnum::class)]
+    #[Groups(['user:read'])]
     private UserStatusEnum $status;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['user:read'])]
     private \DateTimeInterface $createdAt;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
+    #[Groups(['user:read'])]
     private ?\DateTimeInterface $updatedAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $oauthId = null;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
+    #[Groups(['user:read'])]
     private ?\DateTimeInterface $lastLoginAt = null;
 
     #[ORM\OneToOne(mappedBy: 'user', cascade: ['persist', 'remove'])]
@@ -67,6 +95,20 @@ class User
         $this->laundryNotes = new ArrayCollection();
         $this->laundryNoteReports = new ArrayCollection();
         $this->userInteractionHistories = new ArrayCollection();
+    }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->email;
+    }
+
+    public function getRoles(): array
+    {
+        return ['ROLE_USER'];
+    }
+
+    public function eraseCredentials(): void
+    {
     }
 
     public function getId(): int

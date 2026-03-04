@@ -6,9 +6,11 @@ use App\Repository\AdminRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 #[ORM\Entity(repositoryClass: AdminRepository::class)]
-class Admin
+class Admin implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -36,6 +38,18 @@ class Admin
         $this->professionalInteractionHistories = new ArrayCollection();
         $this->laundryInteractionHistories = new ArrayCollection();
     }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->email;
+    }
+
+    public function getRoles(): array
+    {
+        return ['ROLE_ADMIN'];
+    }
+    
+    public function eraseCredentials(): void {}
 
     public function getId(): int
     {
