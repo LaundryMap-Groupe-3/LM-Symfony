@@ -60,7 +60,7 @@ class ProfessionalFixtures extends Fixture
         $userPro1->setEmail('pierre.laverie@example.com');
         $userPro1->setPassword($this->passwordHasher->hashPassword($userPro1, 'password123'));
         $userPro1->setFirstName('Pierre');
-        $userPro1->setLastName('Laverie');
+        $userPro1->setLastName('Martin');
         $userPro1->setStatus(UserStatusEnum::VERIFIED);
         $userPro1->setCreatedAt(new \DateTime('2025-11-10'));
         $userPro1->setLastLoginAt(new \DateTime('2026-03-05'));
@@ -79,7 +79,7 @@ class ProfessionalFixtures extends Fixture
         $userPro2->setEmail('claire.pressing@example.com');
         $userPro2->setPassword($this->passwordHasher->hashPassword($userPro2, 'password123'));
         $userPro2->setFirstName('Claire');
-        $userPro2->setLastName('Pressing');
+        $userPro2->setLastName('Bernard');
         $userPro2->setStatus(UserStatusEnum::VERIFIED);
         $userPro2->setCreatedAt(new \DateTime('2026-01-20'));
         $userPro2->setLastLoginAt(new \DateTime('2026-03-04'));
@@ -98,7 +98,7 @@ class ProfessionalFixtures extends Fixture
         $userPro3->setEmail('thomas.lavomatic@example.com');
         $userPro3->setPassword($this->passwordHasher->hashPassword($userPro3, 'password123'));
         $userPro3->setFirstName('Thomas');
-        $userPro3->setLastName('Lavomatic');
+        $userPro3->setLastName('Durand');
         $userPro3->setStatus(UserStatusEnum::PENDING);
         $userPro3->setCreatedAt(new \DateTime('2026-03-01'));
         $manager->persist($userPro3);
