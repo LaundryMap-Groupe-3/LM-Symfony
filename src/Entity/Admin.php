@@ -6,9 +6,11 @@ use App\Repository\AdminRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: AdminRepository::class)]
-class Admin
+class Admin implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -123,5 +125,30 @@ class Admin
             $laundryInteractionHistory->setAdmin($this);
         }
         return $this;
+    }
+
+    /**
+     * @see UserInterface
+     */
+    public function getUserIdentifier(): string
+    {
+        return $this->email;
+    }
+
+    /**
+     * @see UserInterface
+     * Admins always have ROLE_ADMIN
+     */
+    public function getRoles(): array
+    {
+        return ['ROLE_ADMIN', 'ROLE_USER'];
+    }
+
+    /**
+     * @see UserInterface
+     */
+    public function eraseCredentials(): void
+    {
+        // If you store any temporary, sensitive data on the user, clear it here
     }
 }
