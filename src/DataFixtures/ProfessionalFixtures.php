@@ -68,7 +68,7 @@ class ProfessionalFixtures extends Fixture
 
         $professional1 = new Professional();
         $professional1->setUser($userPro1);
-        $professional1->setSiren(123456789);
+        $professional1->setSiret(12345678912345);
         $professional1->setStatus(ProfessionalStatusEnum::APPROVED);
         $professional1->setValidationDate(new \DateTime('2025-11-15'));
         $professional1->setAddress($address1);
@@ -87,7 +87,7 @@ class ProfessionalFixtures extends Fixture
 
         $professional2 = new Professional();
         $professional2->setUser($userPro2);
-        $professional2->setSiren(987654321);
+        $professional2->setSiret(98765432198765);
         $professional2->setStatus(ProfessionalStatusEnum::APPROVED);
         $professional2->setValidationDate(new \DateTime('2026-01-25'));
         $professional2->setAddress($address2);
@@ -105,7 +105,7 @@ class ProfessionalFixtures extends Fixture
 
         $professional3 = new Professional();
         $professional3->setUser($userPro3);
-        $professional3->setSiren(555666777);
+        $professional3->setSiret(55566677799900);
         $professional3->setStatus(ProfessionalStatusEnum::PENDING);
         $professional3->setAddress($address3);
         $manager->persist($professional3);

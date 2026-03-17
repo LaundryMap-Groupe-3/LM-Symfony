@@ -4,7 +4,11 @@ namespace App\Controller;
 
 use App\Entity\Admin;
 use App\Entity\User;
+use App\Entity\Professional;
+use App\Entity\Address;
 use App\Enum\UserStatusEnum;
+use App\Enum\ProfessionalStatusEnum;
+use App\Enum\GeolocalizationStatusEnum;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -91,6 +95,131 @@ class AuthController extends AbstractController
                 'type' => 'user'
             ]
         ], 201);
+    }
+
+    #[Route('/api/register/professional', name: 'api_register_professional', methods: ['POST'])]
+    public function registerProfessional(
+        Request $request,
+        UserPasswordHasherInterface $passwordHasher,
+        EntityManagerInterface $entityManager
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $errors = [];
+
+        // Validation des champs requis
+        if (empty($data['email'])) {
+            $errors['email'] = 'Email is required';
+        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Email format is invalid';
+        }
+
+        if (empty($data['password'])) {
+            $errors['password'] = 'Password is required';
+        } elseif (strlen($data['password']) < 8) {
+            $errors['password'] = 'Password must be at least 8 characters long';
+        }
+
+        if (empty($data['firstName'])) {
+            $errors['firstName'] = 'First name is required';
+        }
+
+        if (empty($data['lastName'])) {
+            $errors['lastName'] = 'Last name is required';
+        }
+
+        if (empty($data['siret'])) {
+            $errors['siret'] = 'SIRET/SIREN is required';
+        }
+
+        if (empty($data['street'])) {
+            $errors['street'] = 'Street is required';
+        }
+
+        if (empty($data['postalCode'])) {
+            $errors['postalCode'] = 'Postal code is required';
+        } elseif (!preg_match('/^\d{5}$/', $data['postalCode'])) {
+            $errors['postalCode'] = 'Postal code must be 5 digits';
+        }
+
+        if (empty($data['city'])) {
+            $errors['city'] = 'City is required';
+        }
+
+        if (empty($data['country'])) {
+            $errors['country'] = 'Country is required';
+        }
+
+        if (!empty($errors)) {
+            return $this->json(['errors' => $errors], 400);
+        }
+
+        // Vérifier que l'email n'existe pas
+        $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => strtolower($data['email'])]);
+        if ($existingUser) {
+            return $this->json(['error' => 'This email is already registered'], 409);
+        }
+
+        $existingAdmin = $entityManager->getRepository(Admin::class)->findOneBy(['email' => strtolower($data['email'])]);
+        if ($existingAdmin) {
+            return $this->json(['error' => 'This email is already registered'], 409);
+        }
+
+        try {
+            // Créer l'adresse
+            $address = new Address();
+            $address->setAddress(trim($data['street']) . ', ' . trim($data['postalCode']) . ' ' . trim($data['city']));
+            $address->setStreet(trim($data['street']));
+            $address->setCity(trim($data['city']));
+            $address->setPostalCode((int)$data['postalCode']);
+            $address->setCountry(trim($data['country']));
+            $address->setGeolocalizationStatus(GeolocalizationStatusEnum::PENDING);
+
+            // Créer l'utilisateur
+            $user = new User();
+            $user->setEmail(strtolower(trim($data['email'])));
+            $user->setFirstName(trim($data['firstName']));
+            $user->setLastName(trim($data['lastName']));
+            
+            $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
+            $user->setPassword($hashedPassword);
+            $user->setStatus(UserStatusEnum::PENDING);
+            $user->setCreatedAt(new \DateTime());
+
+            // Créer le professionnel
+            $professional = new Professional();
+            $professional->setSiren(trim($data['siret']));
+            $professional->setStatus(ProfessionalStatusEnum::PENDING);
+            $professional->setUser($user);
+            $professional->setAddress($address);
+
+            // Persister tous les objets
+            $entityManager->persist($address);
+            $entityManager->persist($user);
+            $entityManager->persist($professional);
+            $entityManager->flush();
+
+            return $this->json([
+                'message' => 'Professional account created successfully',
+                'user' => [
+                    'id' => $user->getId(),
+                    'email' => $user->getEmail(),
+                    'firstName' => $user->getFirstName(),
+                    'lastName' => $user->getLastName(),
+                    'status' => $user->getStatus()->value,
+                    'type' => 'professional'
+                ],
+                'professional' => [
+                    'id' => $professional->getId(),
+                    'siren' => $professional->getSiren(),
+                    'status' => $professional->getStatus()->value,
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 'An error occurred while creating the professional account',
+                'details' => $e->getMessage()
+            ], 500);
+        }
     }
 
     #[Route('/api/login_check', name: 'api_login_check', methods: ['POST'])]
