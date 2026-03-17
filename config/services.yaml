@@ -35,3 +35,7 @@ services:
         arguments:
             $clientId: '%env(INSEE_CLIENT_ID)%'
             $clientSecret: '%env(INSEE_CLIENT_SECRET)%'
+
+    App\Service\EmailService:
+        arguments:
+            $frontendUrl: '%env(FRONTEND_URL)%'

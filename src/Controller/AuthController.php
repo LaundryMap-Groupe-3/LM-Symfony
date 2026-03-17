@@ -9,7 +9,10 @@ use App\Entity\Address;
 use App\Enum\UserStatusEnum;
 use App\Enum\ProfessionalStatusEnum;
 use App\Enum\GeolocalizationStatusEnum;
+use App\Repository\EmailVerificationTokenRepository;
 use App\Service\SireneService;
+use App\Service\EmailVerificationService;
+use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -23,7 +26,9 @@ class AuthController extends AbstractController
     public function register(
         Request $request,
         UserPasswordHasherInterface $passwordHasher,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        EmailVerificationService $emailVerificationService,
+        EmailService $emailService
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
         $errors = [];
@@ -85,8 +90,12 @@ class AuthController extends AbstractController
         $entityManager->persist($user);
         $entityManager->flush();
 
+        // Générer et envoyer le token de vérification d'email
+        $verificationToken = $emailVerificationService->generateToken($user);
+        $emailService->sendVerificationEmail($user, $verificationToken);
+
         return $this->json([
-            'message' => 'User created successfully',
+            'message' => 'User created successfully. Please check your email to verify your address.',
             'user' => [
                 'id' => $user->getId(),
                 'email' => $user->getEmail(),
@@ -103,7 +112,9 @@ class AuthController extends AbstractController
         Request $request,
         UserPasswordHasherInterface $passwordHasher,
         EntityManagerInterface $entityManager,
-        SireneService $sireneService
+        SireneService $sireneService,
+        EmailVerificationService $emailVerificationService,
+        EmailService $emailService
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
         $errors = [];
@@ -206,8 +217,12 @@ class AuthController extends AbstractController
             $entityManager->persist($professional);
             $entityManager->flush();
 
+            // Générer et envoyer le token de vérification d'email
+            $verificationToken = $emailVerificationService->generateToken($user);
+            $emailService->sendVerificationEmail($user, $verificationToken);
+
             return $this->json([
-                'message' => 'Professional account created successfully',
+                'message' => 'Professional account created successfully. Please check your email to verify your address.',
                 'user' => [
                     'id' => $user->getId(),
                     'email' => $user->getEmail(),
@@ -234,6 +249,35 @@ class AuthController extends AbstractController
     public function loginCheck(): void
     {
         // This controller can be blank: it will be intercepted by the json_login firewall
+    }
+
+    #[Route('/api/verify-email', name: 'api_verify_email', methods: ['POST'])]
+    public function verifyEmail(
+        Request $request,
+        EmailVerificationService $emailVerificationService
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['token'])) {
+            return $this->json(['error' => 'Token is required'], 400);
+        }
+
+        $user = $emailVerificationService->verifyToken($data['token']);
+
+        if (!$user) {
+            return $this->json(['error' => 'Invalid or expired token'], 400);
+        }
+
+        return $this->json([
+            'message' => 'Email verified successfully',
+            'user' => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'firstName' => $user->getFirstName(),
+                'lastName' => $user->getLastName(),
+                'status' => $user->getStatus()->value,
+            ]
+        ], 200);
     }
 
     #[Route('/api/me', name: 'api_me', methods: ['GET'])]

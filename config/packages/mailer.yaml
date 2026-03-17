@@ -1,0 +1,4 @@
+# https://symfony.com/doc/current/mailer.html
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
