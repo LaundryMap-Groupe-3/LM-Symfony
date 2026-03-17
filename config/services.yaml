@@ -30,3 +30,8 @@ services:
     App\EventListener\JsonExceptionListener:
         tags:
             - { name: kernel.event_listener, event: kernel.exception, priority: 0 }
+
+    App\Service\SireneService:
+        arguments:
+            $clientId: '%env(INSEE_CLIENT_ID)%'
+            $clientSecret: '%env(INSEE_CLIENT_SECRET)%'

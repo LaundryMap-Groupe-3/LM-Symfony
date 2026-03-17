@@ -9,6 +9,7 @@ use App\Entity\Address;
 use App\Enum\UserStatusEnum;
 use App\Enum\ProfessionalStatusEnum;
 use App\Enum\GeolocalizationStatusEnum;
+use App\Service\SireneService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -101,7 +102,8 @@ class AuthController extends AbstractController
     public function registerProfessional(
         Request $request,
         UserPasswordHasherInterface $passwordHasher,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        SireneService $sireneService
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
         $errors = [];
@@ -128,7 +130,13 @@ class AuthController extends AbstractController
         }
 
         if (empty($data['siret'])) {
-            $errors['siret'] = 'SIRET/SIREN is required';
+            $errors['siret'] = 'SIRET is required';
+        } else {
+            // Vérifier le SIRET via l'API SIRENE
+            $sireneResult = $sireneService->verifySiret($data['siret']);
+            if (!$sireneResult['valid']) {
+                $errors['siret'] = $sireneResult['error'] ?? 'Invalid SIRET';
+            }
         }
 
         if (empty($data['street'])) {
@@ -187,7 +195,7 @@ class AuthController extends AbstractController
 
             // Créer le professionnel
             $professional = new Professional();
-            $professional->setSiren(trim($data['siret']));
+            $professional->setSiret(trim($data['siret']));
             $professional->setStatus(ProfessionalStatusEnum::PENDING);
             $professional->setUser($user);
             $professional->setAddress($address);
@@ -210,7 +218,7 @@ class AuthController extends AbstractController
                 ],
                 'professional' => [
                     'id' => $professional->getId(),
-                    'siren' => $professional->getSiren(),
+                    'siret' => $professional->getSiret(),
                     'status' => $professional->getStatus()->value,
                 ]
             ], 201);
@@ -262,7 +270,7 @@ class AuthController extends AbstractController
                 $response['type'] = 'professional';
                 $response['professional'] = [
                     'id' => $professional->getId(),
-                    'siren' => $professional->getSiren(),
+                    'siret' => $professional->getSiret(),
                     'status' => $professional->getStatus()->value,
                     'validationDate' => $professional->getValidationDate()?->format('c'),
                 ];
