@@ -62,6 +62,7 @@ class ProfessionalFixtures extends Fixture
         $userPro1->setFirstName('Pierre');
         $userPro1->setLastName('Martin');
         $userPro1->setStatus(UserStatusEnum::VERIFIED);
+        $userPro1->setEmailVerifiedAt(new \DateTime('2025-11-11'));
         $userPro1->setCreatedAt(new \DateTime('2025-11-10'));
         $userPro1->setLastLoginAt(new \DateTime('2026-03-05'));
         $manager->persist($userPro1);
@@ -81,6 +82,7 @@ class ProfessionalFixtures extends Fixture
         $userPro2->setFirstName('Claire');
         $userPro2->setLastName('Bernard');
         $userPro2->setStatus(UserStatusEnum::VERIFIED);
+        $userPro2->setEmailVerifiedAt(new \DateTime('2026-01-21'));
         $userPro2->setCreatedAt(new \DateTime('2026-01-20'));
         $userPro2->setLastLoginAt(new \DateTime('2026-03-04'));
         $manager->persist($userPro2);

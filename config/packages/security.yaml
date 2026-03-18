@@ -14,7 +14,7 @@ security:
             security: false
         
         login:
-            pattern: ^/api/login
+            pattern: ^/api/(login|login_check)
             stateless: true
             provider: multi_table_user_provider
             json_login:
@@ -35,6 +35,7 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/verify-email, roles: PUBLIC_ACCESS }
+        - { path: ^/api/resend-verification-email, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 

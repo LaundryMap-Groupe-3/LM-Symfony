@@ -14,11 +14,13 @@ use App\Service\SireneService;
 use App\Service\EmailVerificationService;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 
 class AuthController extends AbstractController
 {
@@ -245,6 +247,106 @@ class AuthController extends AbstractController
         }
     }
 
+    #[Route('/api/login', name: 'api_login', methods: ['POST'])]
+    public function login(
+        Request $request,
+        UserPasswordHasherInterface $passwordHasher,
+        EntityManagerInterface $entityManager,
+        JWTTokenManagerInterface $jwtManager
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $errors = [];
+
+        // Validation des champs requis
+        if (empty($data['email'])) {
+            $errors['email'] = 'Email is required';
+        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Email format is invalid';
+        }
+
+        if (empty($data['password'])) {
+            $errors['password'] = 'Password is required';
+        }
+
+        if (!empty($errors)) {
+            return $this->json(['errors' => $errors], 400);
+        }
+
+        // Chercher l'utilisateur dans la table Admin
+        $admin = $entityManager->getRepository(Admin::class)->findOneBy(['email' => strtolower($data['email'])]);
+        if ($admin) {
+            if (!$passwordHasher->isPasswordValid($admin, $data['password'])) {
+                return $this->json(['error' => 'Invalid email or password'], 401);
+            }
+
+            // Admin peut se connecter directement
+            $token = $jwtManager->create($admin);
+            return $this->json([
+                'token' => $token,
+                'user' => [
+                    'id' => $admin->getId(),
+                    'email' => $admin->getEmail(),
+                    'type' => 'admin',
+                ]
+            ], 200);
+        }
+
+        // Chercher l'utilisateur dans la table User
+        $user = $entityManager->getRepository(User::class)->findOneBy(['email' => strtolower($data['email'])]);
+        if (!$user) {
+            return $this->json(['error' => 'Invalid email or password'], 401);
+        }
+
+        if (!$passwordHasher->isPasswordValid($user, $data['password'])) {
+            return $this->json(['error' => 'Invalid email or password'], 401);
+        }
+
+        // Vérifier si l'email a été vérifié
+        if ($user->getEmailVerifiedAt() === null) {
+            return $this->json(['error' => 'email_not_verified'], 401);
+        }
+
+        // Vérifier si le compte a été suspendu
+        if ($user->getStatus() === UserStatusEnum::SUSPENDED) {
+            return $this->json(['error' => 'account_suspended'], 403);
+        }
+
+        // Vérifier si c'est un professionnel et si son compte a été approuvé
+        $professional = $user->getProfessional();
+        if ($professional !== null) {
+            if ($professional->getStatus() === ProfessionalStatusEnum::PENDING) {
+                return $this->json(['error' => 'professional_pending_approval'], 403);
+            }
+            if ($professional->getStatus() === ProfessionalStatusEnum::REJECTED) {
+                return $this->json(['error' => 'professional_rejected'], 403);
+            }
+        }
+
+        // Générer le JWT token
+        $token = $jwtManager->create($user);
+
+        // Mettre à jour lastLoginAt
+        $user->setLastLoginAt(new \DateTime());
+        $entityManager->flush();
+
+        return $this->json([
+            'token' => $token,
+            'user' => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'firstName' => $user->getFirstName(),
+                'lastName' => $user->getLastName(),
+                'status' => $user->getStatus()->value,
+                'type' => $professional !== null ? 'professional' : 'user',
+                'professional' => $professional ? [
+                    'id' => $professional->getId(),
+                    'siret' => $professional->getSiret(),
+                    'status' => $professional->getStatus()->value,
+                ] : null
+            ]
+        ], 200);
+    }
+
     #[Route('/api/login_check', name: 'api_login_check', methods: ['POST'])]
     public function loginCheck(): void
     {
@@ -278,6 +380,52 @@ class AuthController extends AbstractController
                 'status' => $user->getStatus()->value,
             ]
         ], 200);
+    }
+
+    #[Route('/api/resend-verification-email', name: 'api_resend_verification_email', methods: ['POST'])]
+    public function resendVerificationEmail(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        EmailVerificationService $emailVerificationService,
+        EmailService $emailService
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['email'])) {
+            return $this->json(['error' => 'Email is required'], 400);
+        }
+
+        // Find user by email
+        $user = $entityManager->getRepository(User::class)->findOneBy(['email' => strtolower($data['email'])]);
+
+        if (!$user) {
+            // Don't reveal if email exists
+            return $this->json([
+                'message' => 'If this email exists and is not verified, you will receive a verification email shortly.'
+            ], 200);
+        }
+
+        // Check if email is already verified
+        if ($user->getEmailVerifiedAt() !== null) {
+            return $this->json([
+                'message' => 'This email is already verified.'
+            ], 200);
+        }
+
+        try {
+            // Generate and send new verification token
+            $verificationToken = $emailVerificationService->generateToken($user);
+            $emailService->sendVerificationEmail($user, $verificationToken);
+
+            return $this->json([
+                'message' => 'Verification email has been sent successfully.'
+            ], 200);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 'An error occurred while sending the verification email.',
+                'details' => $e->getMessage()
+            ], 500);
+        }
     }
 
     #[Route('/api/me', name: 'api_me', methods: ['GET'])]
