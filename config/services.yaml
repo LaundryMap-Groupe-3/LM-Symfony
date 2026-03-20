@@ -33,8 +33,8 @@ services:
 
     App\Service\SireneService:
         arguments:
-            $clientId: '%env(INSEE_CLIENT_ID)%'
-            $clientSecret: '%env(INSEE_CLIENT_SECRET)%'
+            $apiKey: '%env(INSEE_API_KEY)%'
+            $sireneApiUrl: '%env(default::INSEE_SIRENE_API_URL)%'
 
     App\Service\EmailService:
         arguments:
