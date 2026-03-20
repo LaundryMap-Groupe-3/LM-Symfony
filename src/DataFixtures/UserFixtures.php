@@ -28,6 +28,7 @@ class UserFixtures extends Fixture
         $user1->setFirstName('Marie');
         $user1->setLastName('Dupont');
         $user1->setStatus(UserStatusEnum::VERIFIED);
+        $user1->setEmailVerifiedAt(new \DateTime('2026-01-16'));
         $user1->setCreatedAt(new \DateTime('2026-01-15'));
         $user1->setLastLoginAt(new \DateTime('2026-03-04'));
         $manager->persist($user1);
@@ -39,6 +40,7 @@ class UserFixtures extends Fixture
         $user2->setFirstName('Jean');
         $user2->setLastName('Martin');
         $user2->setStatus(UserStatusEnum::VERIFIED);
+        $user2->setEmailVerifiedAt(new \DateTime('2026-02-02'));
         $user2->setCreatedAt(new \DateTime('2026-02-01'));
         $user2->setLastLoginAt(new \DateTime('2026-03-05'));
         $manager->persist($user2);

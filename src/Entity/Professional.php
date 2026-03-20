@@ -20,8 +20,8 @@ class Professional
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
-    #[ORM\Column]
-    private int $siren;
+    #[ORM\Column(length: 20)]
+    private string $siret;
 
     #[ORM\Column(type: 'string', enumType: ProfessionalStatusEnum::class)]
     private ProfessionalStatusEnum $status;
@@ -61,14 +61,14 @@ class Professional
         return $this;
     }
 
-    public function getSiren(): int
+    public function getSiret(): string
     {
-        return $this->siren;
+        return $this->siret;
     }
 
-    public function setSiren(int $siren): static
+    public function setSiret(string $siret): static
     {
-        $this->siren = $siren;
+        $this->siret = $siret;
         return $this;
     }
 
