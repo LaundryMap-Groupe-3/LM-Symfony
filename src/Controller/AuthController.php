@@ -37,23 +37,23 @@ class AuthController extends AbstractController
 
         // Validation des champs requis
         if (empty($data['email'])) {
-            $errors['email'] = 'Email is required';
+            $errors['email'] = 'validation.email_required';
         } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            $errors['email'] = 'Email format is invalid';
+            $errors['email'] = 'validation.email_invalid';
         }
 
         if (empty($data['password'])) {
-            $errors['password'] = 'Password is required';
+            $errors['password'] = 'validation.password_required';
         } elseif (strlen($data['password']) < 8) {
-            $errors['password'] = 'Password must be at least 8 characters long';
+            $errors['password'] = 'validation.password_too_short';
         }
 
         // Validation des champs optionnels s'ils sont fournis
         if (isset($data['firstName']) && strlen(trim($data['firstName'])) === 0) {
-            $errors['firstName'] = 'First name cannot be empty';
+            $errors['firstName'] = 'validation.first_name_empty';
         }
         if (isset($data['lastName']) && strlen(trim($data['lastName'])) === 0) {
-            $errors['lastName'] = 'Last name cannot be empty';
+            $errors['lastName'] = 'validation.last_name_empty';
         }
 
         // Retourner les erreurs de validation
@@ -64,12 +64,12 @@ class AuthController extends AbstractController
         // Vérifier que l'email n'existe pas
         $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['email']]);
         if ($existingUser) {
-            return $this->json(['error' => 'This email is already registered'], 409);
+            return $this->json(['error' => 'validation.email_already_registered'], 409);
         }
 
         $existingAdmin = $entityManager->getRepository(Admin::class)->findOneBy(['email' => $data['email']]);
         if ($existingAdmin) {
-            return $this->json(['error' => 'This email is already registered'], 409);
+            return $this->json(['error' => 'validation.email_already_registered'], 409);
         }
 
         // Créer le nouvel utilisateur
@@ -123,51 +123,51 @@ class AuthController extends AbstractController
 
         // Validation des champs requis
         if (empty($data['email'])) {
-            $errors['email'] = 'Email is required';
+            $errors['email'] = 'validation.email_required';
         } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            $errors['email'] = 'Email format is invalid';
+            $errors['email'] = 'validation.email_invalid';
         }
 
         if (empty($data['password'])) {
-            $errors['password'] = 'Password is required';
+            $errors['password'] = 'validation.password_required';
         } elseif (strlen($data['password']) < 8) {
-            $errors['password'] = 'Password must be at least 8 characters long';
+            $errors['password'] = 'validation.password_too_short';
         }
 
         if (empty($data['firstName'])) {
-            $errors['firstName'] = 'First name is required';
+            $errors['firstName'] = 'validation.first_name_required';
         }
 
         if (empty($data['lastName'])) {
-            $errors['lastName'] = 'Last name is required';
+            $errors['lastName'] = 'validation.last_name_required';
         }
 
         if (empty($data['siret'])) {
-            $errors['siret'] = 'SIRET is required';
+            $errors['siret'] = 'validation.siret_required';
         } else {
             // Vérifier le SIRET via l'API SIRENE
             $sireneResult = $sireneService->verifySiret($data['siret']);
             if (!$sireneResult['valid']) {
-                $errors['siret'] = $sireneResult['error'] ?? 'Invalid SIRET';
+                $errors['siret'] = $sireneResult['error'] ?? 'validation.siret_invalid';
             }
         }
 
         if (empty($data['street'])) {
-            $errors['street'] = 'Street is required';
+            $errors['street'] = 'validation.street_required';
         }
 
         if (empty($data['postalCode'])) {
-            $errors['postalCode'] = 'Postal code is required';
+            $errors['postalCode'] = 'validation.postal_code_required';
         } elseif (!preg_match('/^\d{5}$/', $data['postalCode'])) {
-            $errors['postalCode'] = 'Postal code must be 5 digits';
+            $errors['postalCode'] = 'validation.postal_code_invalid';
         }
 
         if (empty($data['city'])) {
-            $errors['city'] = 'City is required';
+            $errors['city'] = 'validation.city_required';
         }
 
         if (empty($data['country'])) {
-            $errors['country'] = 'Country is required';
+            $errors['country'] = 'validation.country_required';
         }
 
         if (!empty($errors)) {
@@ -177,12 +177,12 @@ class AuthController extends AbstractController
         // Vérifier que l'email n'existe pas
         $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => strtolower($data['email'])]);
         if ($existingUser) {
-            return $this->json(['error' => 'This email is already registered'], 409);
+            return $this->json(['error' => 'validation.email_already_registered'], 409);
         }
 
         $existingAdmin = $entityManager->getRepository(Admin::class)->findOneBy(['email' => strtolower($data['email'])]);
         if ($existingAdmin) {
-            return $this->json(['error' => 'This email is already registered'], 409);
+            return $this->json(['error' => 'validation.email_already_registered'], 409);
         }
 
         try {
@@ -241,7 +241,7 @@ class AuthController extends AbstractController
             ], 201);
         } catch (\Exception $e) {
             return $this->json([
-                'error' => 'An error occurred while creating the professional account',
+                'error' => 'errors.professional_account_error',
                 'details' => $e->getMessage()
             ], 500);
         }
@@ -276,7 +276,7 @@ class AuthController extends AbstractController
         $admin = $entityManager->getRepository(Admin::class)->findOneBy(['email' => strtolower($data['email'])]);
         if ($admin) {
             if (!$passwordHasher->isPasswordValid($admin, $data['password'])) {
-                return $this->json(['error' => 'Invalid email or password'], 401);
+                return $this->json(['error' => 'errors.invalid_email_password'], 401);
             }
 
             // Admin peut se connecter directement
@@ -294,11 +294,11 @@ class AuthController extends AbstractController
         // Chercher l'utilisateur dans la table User
         $user = $entityManager->getRepository(User::class)->findOneBy(['email' => strtolower($data['email'])]);
         if (!$user) {
-            return $this->json(['error' => 'Invalid email or password'], 401);
+            return $this->json(['error' => 'errors.invalid_email_password'], 401);
         }
 
         if (!$passwordHasher->isPasswordValid($user, $data['password'])) {
-            return $this->json(['error' => 'Invalid email or password'], 401);
+            return $this->json(['error' => 'errors.invalid_email_password'], 401);
         }
 
         // Vérifier si l'email a été vérifié
@@ -361,13 +361,13 @@ class AuthController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['token'])) {
-            return $this->json(['error' => 'Token is required'], 400);
+            return $this->json(['error' => 'errors.token_required'], 400);
         }
 
         $user = $emailVerificationService->verifyToken($data['token']);
 
         if (!$user) {
-            return $this->json(['error' => 'Invalid or expired token'], 400);
+            return $this->json(['error' => 'errors.token_invalid'], 400);
         }
 
         return $this->json([
@@ -392,7 +392,7 @@ class AuthController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['email'])) {
-            return $this->json(['error' => 'Email is required'], 400);
+            return $this->json(['error' => 'validation.email_required'], 400);
         }
 
         // Find user by email
@@ -422,7 +422,7 @@ class AuthController extends AbstractController
             ], 200);
         } catch (\Exception $e) {
             return $this->json([
-                'error' => 'An error occurred while sending the verification email.',
+                'error' => 'errors.email_send_error',
                 'details' => $e->getMessage()
             ], 500);
         }
@@ -434,7 +434,7 @@ class AuthController extends AbstractController
         $user = $this->getUser();
 
         if (!$user) {
-            return $this->json(['error' => 'Not authenticated'], 401);
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
         }
 
         if ($user instanceof Admin) {
@@ -471,6 +471,6 @@ class AuthController extends AbstractController
             return $this->json($response);
         }
 
-        return $this->json(['error' => 'Unknown user type'], 500);
+        return $this->json(['error' => 'errors.unknown_user_type'], 500);
     }
 }

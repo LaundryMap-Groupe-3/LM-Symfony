@@ -9,50 +9,16 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class SireneService
 {
-    private const SIRENE_API_URL = 'https://api.insee.fr/entreprises/sirene/V3.11/siret';
-    private const TOKEN_URL = 'https://api.insee.fr/api-oauth/oauth2/token';
-    
-    private ?string $accessToken = null;
-    private ?int $tokenExpiry = null;
+    private const DEFAULT_SIRENE_API_URL = 'https://api.insee.fr/api-sirene/3.11/siret';
+
+    private string $sireneApiUrl;
     
     public function __construct(
         private HttpClientInterface $httpClient,
-        private string $clientId,
-        private string $clientSecret
-    ) {}
-
-    /**
-     * Obtient un access token via OAuth2
-     */
-    private function getAccessToken(): ?string
-    {
-        // Réutiliser le token s'il n'est pas expiré
-        if ($this->accessToken && $this->tokenExpiry && time() < $this->tokenExpiry) {
-            return $this->accessToken;
-        }
-
-        try {
-            $response = $this->httpClient->request('POST', self::TOKEN_URL, [
-                'auth_basic' => [$this->clientId, $this->clientSecret],
-                'body' => [
-                    'grant_type' => 'client_credentials',
-                ],
-            ]);
-
-            if ($response->getStatusCode() === 200) {
-                $data = $response->toArray();
-                $this->accessToken = $data['access_token'] ?? null;
-                // Token expire dans X secondes, on le garde 5 min avant expiry
-                $this->tokenExpiry = time() + ($data['expires_in'] ?? 3600) - 300;
-                
-                return $this->accessToken;
-            }
-        } catch (ClientExceptionInterface|ServerExceptionInterface|TransportExceptionInterface $e) {
-            // Erreur d'authentification
-            return null;
-        }
-
-        return null;
+        private string $apiKey,
+        ?string $sireneApiUrl = null
+    ) {
+        $this->sireneApiUrl = $sireneApiUrl ?: self::DEFAULT_SIRENE_API_URL;
     }
 
     /**
@@ -67,55 +33,68 @@ class SireneService
         if (!preg_match('/^\d{14}$/', $siret)) {
             return [
                 'valid' => false,
-                'error' => 'SIRET must be 14 digits'
+                'error' => 'validation.siret_invalid'
             ];
         }
 
-        $accessToken = $this->getAccessToken();
-        if (!$accessToken) {
+        if ($this->apiKey === '') {
             return [
                 'valid' => false,
-                'error' => 'Unable to authenticate with INSEE API'
+                'error' => 'errors.insee_api_key_missing'
             ];
         }
 
         try {
-            $response = $this->httpClient->request('GET', self::SIRENE_API_URL . '/' . $siret, [
+            $response = $this->httpClient->request('GET', $this->sireneApiUrl . '/' . $siret, [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
                     'Accept' => 'application/json',
+                    'X-INSEE-Api-Key-Integration' => $this->apiKey,
                 ],
                 'timeout' => 10,
             ]);
 
             $statusCode = $response->getStatusCode();
-
             if ($statusCode === 200) {
                 $data = $response->toArray();
-                
+                $etablissement = $data['etablissement'] ?? [];
+                $uniteLegale = $etablissement['uniteLegale'] ?? [];
+
                 return [
                     'valid' => true,
-                    'siret' => $data['siret'] ?? $siret,
-                    'nom_complet' => $data['nom_complet'] ?? null,
-                    'enseigne' => $data['enseigne'] ?? null,
-                    'etat_administratif' => $data['etat_administratif'] ?? null,
-                ];
-            } elseif ($statusCode === 404) {
-                return [
-                    'valid' => false,
-                    'error' => 'SIRET not found'
-                ];
-            } else {
-                return [
-                    'valid' => false,
-                    'error' => 'Error checking SIRET: ' . $statusCode
+                    // Support both historical flat payload and current nested payload.
+                    'siret' => $data['siret'] ?? $etablissement['siret'] ?? $siret,
+                    'nom_complet' => $data['nom_complet']
+                        ?? $uniteLegale['denominationUniteLegale']
+                        ?? trim(($uniteLegale['prenom1UniteLegale'] ?? '') . ' ' . ($uniteLegale['nomUniteLegale'] ?? ''))
+                        ?: null,
+                    'enseigne' => $data['enseigne'] ?? $etablissement['enseigne1Etablissement'] ?? null,
+                    'etat_administratif' => $data['etat_administratif']
+                        ?? $etablissement['etatAdministratifEtablissement']
+                        ?? null,
                 ];
             }
+
+            if ($statusCode === 404) {
+                return [
+                    'valid' => false,
+                    'error' => 'errors.siret_not_found'
+                ];
+            }
+
+            $body = trim(substr($response->getContent(false), 0, 200));
+            return [
+                'valid' => false,
+                'error' => 'errors.siret_check_error',
+                'statusCode' => $statusCode,
+                'body' => $body
+            ];
         } catch (ClientExceptionInterface|ServerExceptionInterface|TransportExceptionInterface $e) {
             return [
                 'valid' => false,
-                'error' => 'Unable to verify SIRET: ' . $e->getMessage()
+                'error' => 'errors.siret_verify_error',
+                'message' => $e->getMessage()
             ];
         }
     }
+
 }
