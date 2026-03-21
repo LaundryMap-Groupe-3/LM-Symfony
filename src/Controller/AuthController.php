@@ -5,9 +5,12 @@ namespace App\Controller;
 use App\Entity\Admin;
 use App\Entity\User;
 use App\Entity\Professional;
+use App\Entity\UserPreference;
+use App\Entity\Language;
 use App\Entity\Address;
 use App\Enum\UserStatusEnum;
 use App\Enum\ProfessionalStatusEnum;
+use App\Enum\ThemeEnum;
 use App\Enum\GeolocalizationStatusEnum;
 use App\Repository\EmailVerificationTokenRepository;
 use App\Service\SireneService;
@@ -90,6 +93,24 @@ class AuthController extends AbstractController
         $user->setCreatedAt(new \DateTime());
 
         $entityManager->persist($user);
+        $entityManager->flush();
+
+        // Create default user preferences
+        $frenchLanguage = $entityManager->getRepository(Language::class)->findOneBy(['code' => 'fr']);
+        if (!$frenchLanguage) {
+            $frenchLanguage = new Language();
+            $frenchLanguage->setName('Français');
+            $frenchLanguage->setCode('fr');
+            $entityManager->persist($frenchLanguage);
+            $entityManager->flush();
+        }
+
+        $preferences = new UserPreference();
+        $preferences->setUser($user);
+        $preferences->setLanguage($frenchLanguage);
+        $preferences->setTheme(ThemeEnum::LIGHT);
+        $preferences->setNotifications(true);
+        $entityManager->persist($preferences);
         $entityManager->flush();
 
         // Générer et envoyer le token de vérification d'email
@@ -217,6 +238,24 @@ class AuthController extends AbstractController
             $entityManager->persist($address);
             $entityManager->persist($user);
             $entityManager->persist($professional);
+            $entityManager->flush();
+
+            // Create default user preferences
+            $frenchLanguage = $entityManager->getRepository(Language::class)->findOneBy(['code' => 'fr']);
+            if (!$frenchLanguage) {
+                $frenchLanguage = new Language();
+                $frenchLanguage->setName('Français');
+                $frenchLanguage->setCode('fr');
+                $entityManager->persist($frenchLanguage);
+                $entityManager->flush();
+            }
+
+            $preferences = new UserPreference();
+            $preferences->setUser($user);
+            $preferences->setLanguage($frenchLanguage);
+            $preferences->setTheme(ThemeEnum::LIGHT);
+            $preferences->setNotifications(true);
+            $entityManager->persist($preferences);
             $entityManager->flush();
 
             // Générer et envoyer le token de vérification d'email
