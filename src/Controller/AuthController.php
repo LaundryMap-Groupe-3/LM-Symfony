@@ -473,4 +473,84 @@ class AuthController extends AbstractController
 
         return $this->json(['error' => 'errors.unknown_user_type'], 500);
     }
+
+    #[Route('/api/auth-google', name: 'app_auth_google_sso', methods: ['POST'])]
+    public function authGoogle(Request $request, EntityManagerInterface $entityManager, JWTTokenManagerInterface $jwtManager) {
+        try {
+            $data = json_decode($request->getContent(), true);
+            $googleToken = $data['token'];
+
+            $googleUser = $this->verifyGoogleToken($googleToken);
+
+            if (!$googleUser) {
+                return $this->json(['error' => 'Token invalide'], 401);
+            }
+
+            $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $googleUser['email']]);
+            if($existingUser) {
+                $token = $jwtManager->create($existingUser);
+
+                // Mettre à jour lastLoginAt
+                $existingUser->setLastLoginAt(new \DateTime());
+                $entityManager->flush();
+
+                $userAuthenticated = $existingUser;
+
+            } else {
+                $user = new User();
+
+                $user->setEmail($googleUser['email'])
+                    ->setLastName($googleUser['family_name'])
+                    ->setFirstName($googleUser['given_name'])
+                    ->setOauthId($googleUser['sub'])
+                    ->setStatus(UserStatusEnum::VERIFIED)
+                    ->setCreatedAt(new \DateTime());
+
+                $entityManager->persist($user);
+                $entityManager->flush();
+
+                $token = $jwtManager->create($user);
+                $userAuthenticated = $user;
+            }
+
+            return $this->json([
+                'token' => $token,
+                'user' => [
+                    'id' => $userAuthenticated->getId(),
+                    'email' => $userAuthenticated->getEmail(),
+                    'firstName' => $userAuthenticated->getFirstName(),
+                    'lastName' => $userAuthenticated->getLastName(),
+                    'status' => $userAuthenticated->getStatus()->value,
+                    'type' => 'user',
+                    'professional' => null
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Une erreur est survenue'], 500);
+        }
+    }
+
+    private function verifyGoogleToken($accessToken) {
+        $url = 'https://www.googleapis.com/oauth2/v3/userinfo';
+        
+        $context = stream_context_create([
+            'http' => [
+                'header' => "Authorization: Bearer " . $accessToken,
+            ]
+        ]);
+        
+        $response = file_get_contents($url, false, $context);
+
+        if ($response === false) {
+            return null;
+        }
+
+        $data = json_decode($response, true);
+
+        if (empty($data['email'])) {
+            return null;
+        }
+
+        return $data;
+    }
 }

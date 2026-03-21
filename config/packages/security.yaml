@@ -33,6 +33,7 @@ security:
     # Note: Only the *first* matching rule is applied
     access_control:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth-google, roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/verify-email, roles: PUBLIC_ACCESS }
         - { path: ^/api/resend-verification-email, roles: PUBLIC_ACCESS }
