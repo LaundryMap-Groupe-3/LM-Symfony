@@ -39,6 +39,7 @@ services:
     App\Service\EmailService:
         arguments:
             $frontendUrl: '%env(FRONTEND_URL)%'
+            $fromEmail: '%env(MAILER_FROM_EMAIL)%'
 
     App\Service\PasswordResetService:
         arguments:

@@ -13,8 +13,9 @@ class EmailService
 {
     public function __construct(
         private MailerInterface $mailer,
-        private string $appName = 'LaundrieMap',
-        private string $frontendUrl = 'http://localhost',
+        private string $frontendUrl,
+        private string $fromEmail,
+        private string $appName = 'LaundryMap',
     ) {
     }
 
@@ -32,7 +33,7 @@ class EmailService
         $html = $this->renderVerificationEmail($user, $token->getToken(), $verificationUrl, $token->getExpiresAt());
 
         $email = (new Email())
-            ->from(new Address('noreply@laundrietech.com', $this->appName))
+            ->from(new Address($this->fromEmail, $this->appName))
             ->to(new Address($user->getEmail(), ($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')))
             ->subject('Vérifiez votre adresse email')
             ->html($html);
@@ -49,7 +50,7 @@ class EmailService
             $html = $this->renderPasswordResetEmail($firstName, $resetUrl);
 
             $emailMessage = (new Email())
-                ->from(new Address('noreply@laundrietech.com', $this->appName))
+                ->from(new Address($this->fromEmail, $this->appName))
                 ->to(new Address($email, $firstName))
                 ->subject('Réinitialiser votre mot de passe')
                 ->html($html);
@@ -287,7 +288,7 @@ HTML;
             $html = $this->renderProfessionalApprovalEmail($user, $professional);
 
             $email = (new Email())
-                ->from(new Address('noreply@laundrietech.com', $this->appName))
+                ->from(new Address($this->fromEmail, $this->appName))
                 ->to(new Address($user->getEmail(), ($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')))
                 ->subject('Votre compte professionnel a été validé!')
                 ->html($html);
@@ -309,7 +310,7 @@ HTML;
             $html = $this->renderProfessionalRejectionEmail($user, $professional, $rejectionReason);
 
             $email = (new Email())
-                ->from(new Address('noreply@laundrietech.com', $this->appName))
+                ->from(new Address($this->fromEmail, $this->appName))
                 ->to(new Address($user->getEmail(), ($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')))
                 ->subject('Votre compte professionnel a été refusé')
                 ->html($html);
