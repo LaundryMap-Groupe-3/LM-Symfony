@@ -192,6 +192,14 @@ class AuthController extends AbstractController
             $errors['country'] = 'validation.country_required';
         }
 
+        if (empty($data['phone'])) {
+            $errors['phone'] = 'validation.phone_required';
+        }
+
+        if (empty($data['companyName'])) {
+            $errors['companyName'] = 'validation.company_name_required';
+        }
+
         if (!empty($errors)) {
             return $this->json(['errors' => $errors], 400);
         }
@@ -231,6 +239,8 @@ class AuthController extends AbstractController
             // Créer le professionnel
             $professional = new Professional();
             $professional->setSiret(trim($data['siret']));
+            $professional->setPhone(trim($data['phone']));
+            $professional->setCompanyName(trim($data['companyName']));
             $professional->setStatus(ProfessionalStatusEnum::PENDING);
             $professional->setUser($user);
             $professional->setAddress($address);
@@ -592,6 +602,9 @@ class AuthController extends AbstractController
         }
 
         return $data;
+
+    }
+    
     #[Route('/api/forgot-password', name: 'api_forgot_password', methods: ['POST'])]
     public function forgotPassword(
         Request $request,

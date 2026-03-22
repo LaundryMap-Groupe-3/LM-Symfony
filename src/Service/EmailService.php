@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\EmailVerificationToken;
+use App\Entity\Professional;
 use App\Entity\User;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -264,6 +265,285 @@ HTML;
                 <p style="margin-top: 30px; color: #666; font-size: 12px;">
                     Ce lien ne peut être utilisé qu'une seule fois. Si vous n'avez pas réinitialisé votre mot de passe avant son expiration, 
                     vous devrez faire une nouvelle demande.
+                </p>
+            </div>
+
+            <div class="footer">
+                <p>&copy; 2026 LaundryMap. Tous droits réservés.</p>
+            </div>
+        </div>
+    </body>
+</html>
+HTML;
+    }
+
+    /**
+     * Envoie un email de validation du compte professionnel
+     */
+    public function sendProfessionalApprovalEmail(Professional $professional): bool
+    {
+        try {
+            $user = $professional->getUser();
+            $html = $this->renderProfessionalApprovalEmail($user, $professional);
+
+            $email = (new Email())
+                ->from(new Address('noreply@laundrietech.com', $this->appName))
+                ->to(new Address($user->getEmail(), ($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')))
+                ->subject('Votre compte professionnel a été validé!')
+                ->html($html);
+
+            $this->mailer->send($email);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Envoie un email de refus du compte professionnel
+     */
+    public function sendProfessionalRejectionEmail(Professional $professional, string $rejectionReason): bool
+    {
+        try {
+            $user = $professional->getUser();
+            $html = $this->renderProfessionalRejectionEmail($user, $professional, $rejectionReason);
+
+            $email = (new Email())
+                ->from(new Address('noreply@laundrietech.com', $this->appName))
+                ->to(new Address($user->getEmail(), ($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')))
+                ->subject('Votre compte professionnel a été refusé')
+                ->html($html);
+
+            $this->mailer->send($email);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    private function renderProfessionalApprovalEmail(User $user, Professional $professional): string
+    {
+        $companyName = $professional->getCompanyName() ?? 'Votre entreprise';
+
+        return <<<HTML
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Compte professionnel validé</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            .container {
+                background-color: #f9f9f9;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 30px;
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+            .header h1 {
+                color: #27ae60;
+                margin: 0;
+            }
+            .content {
+                margin-bottom: 30px;
+            }
+            .button {
+                display: inline-block;
+                padding: 12px 30px;
+                background-color: #27ae60;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                margin: 20px 0;
+            }
+            .button:hover {
+                background-color: #229954;
+            }
+            .success-box {
+                background-color: #d4edda;
+                border: 1px solid #c3e6cb;
+                border-radius: 5px;
+                padding: 15px;
+                margin: 20px 0;
+                color: #155724;
+            }
+            .footer {
+                border-top: 1px solid #ddd;
+                padding-top: 20px;
+                font-size: 12px;
+                color: #666;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>✓ Félicitations!</h1>
+            </div>
+
+            <div class="content">
+                <p>Bonjour {$user->getFirstName()},</p>
+
+                <p>
+                    Nous sommes heureux de vous informer que votre compte professionnel pour <strong>{$companyName}</strong> 
+                    a été validé avec succès par notre équipe d'administration!
+                </p>
+
+                <div class="success-box">
+                    <strong>Votre compte est maintenant actif.</strong><br>
+                    Vous pouvez dès maintenant accéder à toutes les fonctionnalités de LaundryMap pour les professionnels.
+                </div>
+
+                <p style="margin-top: 30px; color: #666; font-size: 12px;">
+                    Si vous avez des questions, n'hésitez pas à nous contacter.
+                </p>
+            </div>
+
+            <div class="footer">
+                <p>&copy; 2026 LaundryMap. Tous droits réservés.</p>
+            </div>
+        </div>
+    </body>
+</html>
+HTML;
+    }
+
+    private function renderProfessionalRejectionEmail(User $user, Professional $professional, string $rejectionReason): string
+    {
+        $companyName = $professional->getCompanyName() ?? 'Votre entreprise';
+
+        return <<<HTML
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Décision concernant votre compte professionnel</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            .container {
+                background-color: #f9f9f9;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 30px;
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+            .header h1 {
+                color: #d32f2f;
+                margin: 0;
+            }
+            .content {
+                margin-bottom: 30px;
+            }
+            .button {
+                display: inline-block;
+                padding: 12px 30px;
+                background-color: #3498db;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                margin: 20px 0;
+            }
+            .button:hover {
+                background-color: #2980b9;
+            }
+            .rejection-box {
+                background-color: #ffebee;
+                border: 1px solid #ef9a9a;
+                border-radius: 5px;
+                padding: 15px;
+                margin: 20px 0;
+                color: #c62828;
+            }
+            .reason-section {
+                background-color: #f5f5f5;
+                border-left: 4px solid #d32f2f;
+                padding: 15px;
+                margin: 20px 0;
+            }
+            .info-box {
+                background-color: #e3f2fd;
+                border: 1px solid #90caf9;
+                border-radius: 5px;
+                padding: 15px;
+                margin: 20px 0;
+                color: #1565c0;
+            }
+            .footer {
+                border-top: 1px solid #ddd;
+                padding-top: 20px;
+                font-size: 12px;
+                color: #666;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Décision concernant votre demande</h1>
+            </div>
+
+            <div class="content">
+                <p>Bonjour {$user->getFirstName()},</p>
+
+                <p>
+                    Merci de votre intérêt pour LaundryMap. Après examen attentif de votre demande de compte professionnel 
+                    pour <strong>{$companyName}</strong>, nous regrettons de ne pas pouvoir valider votre compte à ce moment.
+                </p>
+
+                <div class="rejection-box">
+                    <strong>Statut: Refusé</strong>
+                </div>
+
+                <h3>Raison du refus:</h3>
+                <div class="reason-section">
+                    {$rejectionReason}
+                </div>
+
+                <h3>Comment continuer ?</h3>
+                <div class="info-box">
+                    <strong>Veuillez noter que votre compte a été supprimé.</strong> Pour réessayer, vous devrez créer un nouveau compte 
+                    avec les corrections apportées aux éléments qui ont conduit au refus de votre première demande.
+                </div>
+
+                <p>
+                    Pour réenregistrer votre compte professionnel avec des informations corrigées ou complètes, 
+                    veuillez procéder à une nouvelle inscription sur notre plateforme.
+                </p>
+
+                <p>
+                    Si vous estimez que cette décision a été prise par erreur ou si vous avez des questions concernant les raisons du refus, 
+                    n'hésitez pas à nous contacter. Nous serons heureux de discuter de votre situation et de vous aider.
+                </p>
+
+                <center>
+                    <a href="{$this->frontendUrl}/contact" class="button">Nous contacter</a>
+                </center>
+
+                <p style="margin-top: 30px; color: #666; font-size: 12px;">
+                    Cordialement,<br>
+                    L'équipe LaundryMap
                 </p>
             </div>
 

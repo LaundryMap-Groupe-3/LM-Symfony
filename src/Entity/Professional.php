@@ -23,11 +23,20 @@ class Professional
     #[ORM\Column(length: 20)]
     private string $siret;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $companyName = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $phone = null;
+
     #[ORM\Column(type: 'string', enumType: ProfessionalStatusEnum::class)]
     private ProfessionalStatusEnum $status;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $validationDate = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $rejectionReason = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
@@ -72,6 +81,28 @@ class Professional
         return $this;
     }
 
+    public function getCompanyName(): ?string
+    {
+        return $this->companyName;
+    }
+
+    public function setCompanyName(?string $companyName): static
+    {
+        $this->companyName = $companyName;
+        return $this;
+    }
+
+    public function getPhone(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function setPhone(?string $phone): static
+    {
+        $this->phone = $phone;
+        return $this;
+    }
+
     public function getStatus(): ProfessionalStatusEnum
     {
         return $this->status;
@@ -91,6 +122,17 @@ class Professional
     public function setValidationDate(?\DateTimeInterface $validationDate): static
     {
         $this->validationDate = $validationDate;
+        return $this;
+    }
+
+    public function getRejectionReason(): ?string
+    {
+        return $this->rejectionReason;
+    }
+
+    public function setRejectionReason(?string $rejectionReason): static
+    {
+        $this->rejectionReason = $rejectionReason;
         return $this;
     }
 

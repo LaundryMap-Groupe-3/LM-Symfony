@@ -70,6 +70,8 @@ class ProfessionalFixtures extends Fixture
         $professional1 = new Professional();
         $professional1->setUser($userPro1);
         $professional1->setSiret(12345678912345);
+        $professional1->setCompanyName('Laverie Martin');
+        $professional1->setPhone('01 23 45 67 89');
         $professional1->setStatus(ProfessionalStatusEnum::APPROVED);
         $professional1->setValidationDate(new \DateTime('2025-11-15'));
         $professional1->setAddress($address1);
@@ -90,6 +92,8 @@ class ProfessionalFixtures extends Fixture
         $professional2 = new Professional();
         $professional2->setUser($userPro2);
         $professional2->setSiret(98765432198765);
+        $professional2->setCompanyName('Pressing Bernard');
+        $professional2->setPhone('01 98 76 54 32');
         $professional2->setStatus(ProfessionalStatusEnum::APPROVED);
         $professional2->setValidationDate(new \DateTime('2026-01-25'));
         $professional2->setAddress($address2);
@@ -108,6 +112,8 @@ class ProfessionalFixtures extends Fixture
         $professional3 = new Professional();
         $professional3->setUser($userPro3);
         $professional3->setSiret(55566677799900);
+        $professional3->setCompanyName('Lavomatic Durand');
+        $professional3->setPhone('04 78 12 34 56');
         $professional3->setStatus(ProfessionalStatusEnum::PENDING);
         $professional3->setAddress($address3);
         $manager->persist($professional3);
