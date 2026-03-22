@@ -5,14 +5,18 @@ namespace App\Controller;
 use App\Entity\Admin;
 use App\Entity\User;
 use App\Entity\Professional;
+use App\Entity\UserPreference;
+use App\Entity\Language;
 use App\Entity\Address;
 use App\Enum\UserStatusEnum;
 use App\Enum\ProfessionalStatusEnum;
+use App\Enum\ThemeEnum;
 use App\Enum\GeolocalizationStatusEnum;
 use App\Repository\EmailVerificationTokenRepository;
 use App\Service\SireneService;
 use App\Service\EmailVerificationService;
 use App\Service\EmailService;
+use App\Service\PasswordResetService;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -90,6 +94,24 @@ class AuthController extends AbstractController
         $user->setCreatedAt(new \DateTime());
 
         $entityManager->persist($user);
+        $entityManager->flush();
+
+        // Create default user preferences
+        $frenchLanguage = $entityManager->getRepository(Language::class)->findOneBy(['code' => 'fr']);
+        if (!$frenchLanguage) {
+            $frenchLanguage = new Language();
+            $frenchLanguage->setName('Français');
+            $frenchLanguage->setCode('fr');
+            $entityManager->persist($frenchLanguage);
+            $entityManager->flush();
+        }
+
+        $preferences = new UserPreference();
+        $preferences->setUser($user);
+        $preferences->setLanguage($frenchLanguage);
+        $preferences->setTheme(ThemeEnum::LIGHT);
+        $preferences->setNotifications(true);
+        $entityManager->persist($preferences);
         $entityManager->flush();
 
         // Générer et envoyer le token de vérification d'email
@@ -217,6 +239,24 @@ class AuthController extends AbstractController
             $entityManager->persist($address);
             $entityManager->persist($user);
             $entityManager->persist($professional);
+            $entityManager->flush();
+
+            // Create default user preferences
+            $frenchLanguage = $entityManager->getRepository(Language::class)->findOneBy(['code' => 'fr']);
+            if (!$frenchLanguage) {
+                $frenchLanguage = new Language();
+                $frenchLanguage->setName('Français');
+                $frenchLanguage->setCode('fr');
+                $entityManager->persist($frenchLanguage);
+                $entityManager->flush();
+            }
+
+            $preferences = new UserPreference();
+            $preferences->setUser($user);
+            $preferences->setLanguage($frenchLanguage);
+            $preferences->setTheme(ThemeEnum::LIGHT);
+            $preferences->setNotifications(true);
+            $entityManager->persist($preferences);
             $entityManager->flush();
 
             // Générer et envoyer le token de vérification d'email
@@ -472,5 +512,95 @@ class AuthController extends AbstractController
         }
 
         return $this->json(['error' => 'errors.unknown_user_type'], 500);
+    }
+
+    #[Route('/api/forgot-password', name: 'api_forgot_password', methods: ['POST'])]
+    public function forgotPassword(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        PasswordResetService $passwordResetService
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['email'])) {
+            return $this->json(['error' => 'validation.email_required'], 400);
+        }
+
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            return $this->json(['error' => 'validation.email_invalid'], 400);
+        }
+
+        // Find user by email
+        $user = $entityManager->getRepository(User::class)->findOneBy(['email' => strtolower($data['email'])]);
+
+        if ($user) {
+            $passwordResetService->handleForgotPasswordRequest($user);
+            // Return 200 with a flag indicating email exists
+            return $this->json([
+                'message' => 'Password reset link has been sent to your email.',
+                'emailExists' => true
+            ], 200);
+        }
+
+        // Email doesn't exist - return different status to indicate this
+        return $this->json([
+            'message' => 'If this email exists in our system, you will receive a password reset link shortly.',
+            'emailExists' => false
+        ], 200);
+    }
+
+    #[Route('/api/verify-reset-token', name: 'api_verify_reset_token', methods: ['POST'])]
+    public function verifyResetToken(
+        Request $request,
+        PasswordResetService $passwordResetService
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['token'])) {
+            return $this->json(['error' => 'validation.token_required'], 400);
+        }
+
+        $resetToken = $passwordResetService->validateToken($data['token']);
+
+        if (!$resetToken) {
+            return $this->json(['error' => 'invalid_or_expired_token'], 400);
+        }
+
+        return $this->json([
+            'message' => 'Token is valid',
+            'email' => $resetToken->getUser()->getEmail()
+        ], 200);
+    }
+
+    #[Route('/api/reset-password', name: 'api_reset_password', methods: ['POST'])]
+    public function resetPassword(
+        Request $request,
+        PasswordResetService $passwordResetService,
+        UserPasswordHasherInterface $passwordHasher
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['token'])) {
+            return $this->json(['error' => 'validation.token_required'], 400);
+        }
+
+        if (empty($data['password'])) {
+            return $this->json(['error' => 'validation.password_required'], 400);
+        }
+
+        if (strlen($data['password']) < 8) {
+            return $this->json(['error' => 'validation.password_too_short'], 400);
+        }
+
+        // Reset password
+        $success = $passwordResetService->resetPassword($data['token'], $data['password'], $passwordHasher);
+
+        if (!$success) {
+            return $this->json(['error' => 'invalid_or_expired_token'], 400);
+        }
+
+        return $this->json([
+            'message' => 'Password has been reset successfully. You can now log in with your new password.'
+        ], 200);
     }
 }
