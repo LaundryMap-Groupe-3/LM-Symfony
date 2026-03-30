@@ -332,35 +332,4 @@ class UserController extends AbstractController
             }, $languages),
         ]);
     }
-
-    #[Route('/api/professional/laundries', name: 'api_professional_laundries', methods: ['GET'])]
-    public function getProfessionalLaundries(EntityManagerInterface $entityManager): JsonResponse
-    {
-        $user = $this->getUser();
-        if (!$user || !$user->getProfessional()) {
-            return $this->json(['error' => 'Not a professional'], 403);
-        }
-        $professional = $user->getProfessional();
-        $laundries = $entityManager->getRepository(\App\Entity\Laundry::class)->findBy(['professional' => $professional]);
-
-        $total = count($laundries);
-        $pending = count(array_filter($laundries, fn($l) => method_exists($l, 'getStatus') && $l->getStatus() && $l->getStatus()->value === 'pending'));
-        $totalNotes = 0;
-        $nbNotes = 0;
-        foreach ($laundries as $laundry) {
-            if (method_exists($laundry, 'getAverageNote') && $laundry->getAverageNote() !== null) {
-                $totalNotes += $laundry->getAverageNote();
-                $nbNotes++;
-            }
-        }
-        $averageNote = $nbNotes > 0 ? round($totalNotes / $nbNotes, 2) : null;
-
-        return $this->json([
-            'stats' => [
-                'total' => $total,
-                'pending' => $pending,
-                'averageNote' => $averageNote,
-            ]
-        ]);
-    }
 }
