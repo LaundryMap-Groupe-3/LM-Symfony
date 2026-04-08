@@ -54,9 +54,18 @@ class ProfessionalController extends AbstractController
         }
 
         $payload = json_decode($request->getContent(), true) ?? [];
+        $errors = [];
+
+        if (array_key_exists('establishmentName', $payload) && is_string($payload['establishmentName']) && strlen(trim($payload['establishmentName'])) > 50) {
+            $errors['establishmentName'] = 'validation.company_name_max_length';
+        }
+
+        if (!empty($errors)) {
+            return $this->json(['errors' => $errors], 400);
+        }
 
         if (array_key_exists('establishmentName', $payload) && is_string($payload['establishmentName'])) {
-            $laundry->setEstablishmentName($payload['establishmentName']);
+            $laundry->setEstablishmentName(trim($payload['establishmentName']));
         }
 
         if (array_key_exists('description', $payload)) {

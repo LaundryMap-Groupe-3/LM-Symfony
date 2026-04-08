@@ -55,9 +55,13 @@ class AuthController extends AbstractController
         // Validation des champs optionnels s'ils sont fournis
         if (isset($data['firstName']) && strlen(trim($data['firstName'])) === 0) {
             $errors['firstName'] = 'validation.first_name_empty';
+        } elseif (isset($data['firstName']) && strlen(trim($data['firstName'])) > 50) {
+            $errors['firstName'] = 'validation.name_max_length';
         }
         if (isset($data['lastName']) && strlen(trim($data['lastName'])) === 0) {
             $errors['lastName'] = 'validation.last_name_empty';
+        } elseif (isset($data['lastName']) && strlen(trim($data['lastName'])) > 50) {
+            $errors['lastName'] = 'validation.name_max_length';
         }
 
         // Retourner les erreurs de validation
@@ -158,10 +162,14 @@ class AuthController extends AbstractController
 
         if (empty($data['firstName'])) {
             $errors['firstName'] = 'validation.first_name_required';
+        } elseif (strlen(trim($data['firstName'])) > 50) {
+            $errors['firstName'] = 'validation.name_max_length';
         }
 
         if (empty($data['lastName'])) {
             $errors['lastName'] = 'validation.last_name_required';
+        } elseif (strlen(trim($data['lastName'])) > 50) {
+            $errors['lastName'] = 'validation.name_max_length';
         }
 
         if (empty($data['siret'])) {
@@ -198,6 +206,8 @@ class AuthController extends AbstractController
 
         if (empty($data['companyName'])) {
             $errors['companyName'] = 'validation.company_name_required';
+        } elseif (strlen(trim($data['companyName'])) > 50) {
+            $errors['companyName'] = 'validation.company_name_max_length';
         }
 
         if (!empty($errors)) {

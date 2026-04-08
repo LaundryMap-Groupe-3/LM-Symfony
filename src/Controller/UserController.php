@@ -57,6 +57,8 @@ class UserController extends AbstractController
                 $errors['firstName'] = 'validation.first_name_empty';
             } elseif (strlen($data['firstName']) < 2) {
                 $errors['firstName'] = 'validation.first_name_required';
+            } elseif (strlen(trim($data['firstName'])) > 50) {
+                $errors['firstName'] = 'validation.name_max_length';
             }
         }
 
@@ -65,6 +67,8 @@ class UserController extends AbstractController
                 $errors['lastName'] = 'validation.last_name_empty';
             } elseif (strlen($data['lastName']) < 2) {
                 $errors['lastName'] = 'validation.last_name_required';
+            } elseif (strlen(trim($data['lastName'])) > 50) {
+                $errors['lastName'] = 'validation.name_max_length';
             }
         }
 
