@@ -6,6 +6,7 @@ use App\Entity\User;
 use App\Entity\UserPreference;
 use App\Entity\Language;
 use App\Enum\ThemeEnum;
+use App\Security\PasswordPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -129,10 +130,9 @@ class UserController extends AbstractController
             }
         }
 
-        if (empty($data['newPassword'])) {
-            $errors['newPassword'] = 'validation.password_required';
-        } elseif (strlen($data['newPassword']) < 8) {
-            $errors['newPassword'] = 'validation.password_too_short';
+        $newPasswordError = PasswordPolicy::getValidationError($data['newPassword'] ?? null);
+        if ($newPasswordError) {
+            $errors['newPassword'] = $newPasswordError;
         }
 
         if (empty($data['confirmPassword'])) {

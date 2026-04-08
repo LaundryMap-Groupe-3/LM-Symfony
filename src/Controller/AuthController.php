@@ -17,6 +17,7 @@ use App\Service\SireneService;
 use App\Service\EmailVerificationService;
 use App\Service\EmailService;
 use App\Service\PasswordResetService;
+use App\Security\PasswordPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -46,10 +47,9 @@ class AuthController extends AbstractController
             $errors['email'] = 'validation.email_invalid';
         }
 
-        if (empty($data['password'])) {
-            $errors['password'] = 'validation.password_required';
-        } elseif (strlen($data['password']) < 8) {
-            $errors['password'] = 'validation.password_too_short';
+        $passwordError = PasswordPolicy::getValidationError($data['password'] ?? null);
+        if ($passwordError) {
+            $errors['password'] = $passwordError;
         }
 
         // Validation des champs optionnels s'ils sont fournis
@@ -72,12 +72,16 @@ class AuthController extends AbstractController
         // Vérifier que l'email n'existe pas
         $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['email']]);
         if ($existingUser) {
-            return $this->json(['error' => 'validation.email_already_registered'], 409);
+            return $this->json([
+                'message' => 'auth.registration_request_received'
+            ], 200);
         }
 
         $existingAdmin = $entityManager->getRepository(Admin::class)->findOneBy(['email' => $data['email']]);
         if ($existingAdmin) {
-            return $this->json(['error' => 'validation.email_already_registered'], 409);
+            return $this->json([
+                'message' => 'auth.registration_request_received'
+            ], 200);
         }
 
         // Créer le nouvel utilisateur
@@ -123,15 +127,7 @@ class AuthController extends AbstractController
         $emailService->sendVerificationEmail($user, $verificationToken);
 
         return $this->json([
-            'message' => 'User created successfully. Please check your email to verify your address.',
-            'user' => [
-                'id' => $user->getId(),
-                'email' => $user->getEmail(),
-                'firstName' => $user->getFirstName(),
-                'lastName' => $user->getLastName(),
-                'status' => $user->getStatus()->value,
-                'type' => 'user'
-            ]
+            'message' => 'auth.registration_request_received'
         ], 201);
     }
 
@@ -154,10 +150,9 @@ class AuthController extends AbstractController
             $errors['email'] = 'validation.email_invalid';
         }
 
-        if (empty($data['password'])) {
-            $errors['password'] = 'validation.password_required';
-        } elseif (strlen($data['password']) < 8) {
-            $errors['password'] = 'validation.password_too_short';
+        $passwordError = PasswordPolicy::getValidationError($data['password'] ?? null);
+        if ($passwordError) {
+            $errors['password'] = $passwordError;
         }
 
         if (empty($data['firstName'])) {
@@ -217,12 +212,16 @@ class AuthController extends AbstractController
         // Vérifier que l'email n'existe pas
         $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => strtolower($data['email'])]);
         if ($existingUser) {
-            return $this->json(['error' => 'validation.email_already_registered'], 409);
+            return $this->json([
+                'message' => 'auth.registration_request_received'
+            ], 200);
         }
 
         $existingAdmin = $entityManager->getRepository(Admin::class)->findOneBy(['email' => strtolower($data['email'])]);
         if ($existingAdmin) {
-            return $this->json(['error' => 'validation.email_already_registered'], 409);
+            return $this->json([
+                'message' => 'auth.registration_request_received'
+            ], 200);
         }
 
         try {
@@ -284,20 +283,7 @@ class AuthController extends AbstractController
             $emailService->sendVerificationEmail($user, $verificationToken);
 
             return $this->json([
-                'message' => 'Professional account created successfully. Please check your email to verify your address.',
-                'user' => [
-                    'id' => $user->getId(),
-                    'email' => $user->getEmail(),
-                    'firstName' => $user->getFirstName(),
-                    'lastName' => $user->getLastName(),
-                    'status' => $user->getStatus()->value,
-                    'type' => 'professional'
-                ],
-                'professional' => [
-                    'id' => $professional->getId(),
-                    'siret' => $professional->getSiret(),
-                    'status' => $professional->getStatus()->value,
-                ]
+                'message' => 'auth.registration_request_received'
             ], 201);
         } catch (\Exception $e) {
             return $this->json([
@@ -636,17 +622,10 @@ class AuthController extends AbstractController
 
         if ($user) {
             $passwordResetService->handleForgotPasswordRequest($user);
-            // Return 200 with a flag indicating email exists
-            return $this->json([
-                'message' => 'Password reset link has been sent to your email.',
-                'emailExists' => true
-            ], 200);
         }
 
-        // Email doesn't exist - return different status to indicate this
         return $this->json([
-            'message' => 'If this email exists in our system, you will receive a password reset link shortly.',
-            'emailExists' => false
+            'message' => 'auth.forgot_password_request_received'
         ], 200);
     }
 
@@ -685,12 +664,9 @@ class AuthController extends AbstractController
             return $this->json(['error' => 'validation.token_required'], 400);
         }
 
-        if (empty($data['password'])) {
-            return $this->json(['error' => 'validation.password_required'], 400);
-        }
-
-        if (strlen($data['password']) < 8) {
-            return $this->json(['error' => 'validation.password_too_short'], 400);
+        $passwordError = PasswordPolicy::getValidationError($data['password'] ?? null);
+        if ($passwordError) {
+            return $this->json(['error' => $passwordError], 400);
         }
 
         // Reset password
