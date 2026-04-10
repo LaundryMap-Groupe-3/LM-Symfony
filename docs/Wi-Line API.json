@@ -1,0 +1,943 @@
+{
+  "info": {
+    "name": "Wi-Line API",
+    "description": "Récupération des informations concernant les centrales de Paiement Wi-Line\nPlus d'infos : www.wi-store.fr / www.wi-line.fr\n\nCréée Par EC2E (Electrocablage)\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Rates List",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": {
+            "key": "token",
+            "value": "{{token}}",
+            "type": "string"
+          }
+        },
+        "description": "Récupere l'état des rates limiter et leurs valeurs.",
+        "url": {
+          "raw": "{{server}}/rates",
+          "protocol": "",
+          "host": [
+            "{{server}}"
+          ],
+          "path": [
+            "rates"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        }
+      },
+      "response": [
+        {
+          "name": "example",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/rates",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "rates"
+              ],
+              "query": [],
+              "variable": []
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "date",
+              "value": "Tue, 03 Feb 2026 14:18:37 GMT",
+              "name": "date",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "server",
+              "value": "Apache/2.4.62 (Debian)",
+              "name": "server",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "set-cookie",
+              "value": "PHPSESSID=sess-0b4465feee337e5ee218b3cfdc83eadf; path=/",
+              "name": "set-cookie",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "expires",
+              "value": "Thu, 19 Nov 1981 08:52:00 GMT",
+              "name": "expires",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "cache-control",
+              "value": "no-store, no-cache, must-revalidate",
+              "name": "cache-control",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "pragma",
+              "value": "no-cache",
+              "name": "pragma",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "x-ratelimit-limit",
+              "value": "5",
+              "name": "x-ratelimit-limit",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "x-ratelimit-remaining",
+              "value": "5",
+              "name": "x-ratelimit-remaining",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "content-length",
+              "value": "573",
+              "name": "content-length",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "keep-alive",
+              "value": "timeout=5, max=100",
+              "name": "keep-alive",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "connection",
+              "value": "Keep-Alive",
+              "name": "connection",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json",
+              "name": "content-type",
+              "description": "",
+              "type": "text"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"success\": true,\n  \"rate_status\": {\n    \"general\": {\n      \"limit\": 60,\n      \"remaining\": 60,\n      \"reset_seconds\": 60\n    },\n    \"ProcessCentrale\": {\n      \"limit\": 30,\n      \"remaining\": 30,\n      \"reset_seconds\": 60\n    },\n    \"ProcessMachine\": {\n      \"limit\": 30,\n      \"remaining\": 30,\n      \"reset_seconds\": 60\n    },\n    \"ProcessCentraleList\": {\n      \"limit\": 5,\n      \"remaining\": 5,\n      \"reset_seconds\": 60\n    },\n    \"ProcessCentraleListDetails\": {\n      \"limit\": 5,\n      \"remaining\": 5,\n      \"reset_seconds\": 60\n    },\n    \"ProcessTransactionCounter\": {\n      \"limit\": 5,\n      \"remaining\": 5,\n      \"reset_seconds\": 60\n    },\n    \"ProcessTransaction\": {\n      \"limit\": 30,\n      \"remaining\": 30,\n      \"reset_seconds\": 60\n    },\n    \"ProcessTransactionsList\": {\n      \"limit\": 20,\n      \"remaining\": 20,\n      \"reset_seconds\": 60\n    }\n  }\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    },
+    {
+      "name": "Centrales",
+      "item": [
+        {
+          "name": "Infos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "Récupere les informations détaillées d'une centrale associés au compte à partir d'un numero de série de centrale.",
+            "url": {
+              "raw": "{{server}}/centrale/{{centrale_serial}}/info",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "centrale",
+                "{{centrale_serial}}",
+                "info"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            }
+          }
+        },
+        {
+          "name": "List Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "Récupere la liste des centrales associés au compte avec le numéro de la dernière transaction de chacune.",
+            "url": {
+              "raw": "{{server}}/centralestransactions",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "centralestransactions"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            }
+          }
+        },
+        {
+          "name": "List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "Récupere la liste des centrales associés au compte",
+            "url": {
+              "raw": "{{server}}/centrales",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "centrales"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            }
+          }
+        },
+        {
+          "name": "Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "Affiche le status générale d'une centrale\n\n\n- `machine_number` : Numéro de sélection de la machine, 0 indique que la machine n'est pas sélectionnable\n- `name`: Le nom de la machine, utilisé uniquement pour les machines non sélectionnable\n- `type_name`: Le nom du type de la machine, Ex : \"Machine 9Kg\"\n- `status`: Status de la machine (voir liste ci-apres)\n- `status_text` : Texte descriptif du status\n- `remaining_time`: Temps restant sur la machine (en secondes)\n- `start_time`: Heure de debut d'utilisation autorisée\n- `stop_time`: Heure de fin d'utilisation autorisée\n- `price`: Prix normal (en centimes)\n- `reduced_price` : Prix réduit (en centimes)\n- `reduced_start`: Heure de début de réduction du prix\n- `reduced_stop` : Heure de fin de réduction du prix\n- `reduced_days` : BitField contenant les jours oû les prix réduit sont actifs (LSB: Dimanche)\n\n## Les status sont:\n- 1 : \"Free\", La machine est libre, le retour d'occupation n'est pas actif\n- 2 : \"Busy\", La machine est démarrée (type Occupation), le retour d'occupation est actif (Pas de durée estimable)\n- 3 : \"Out of service\", La machine est indisponnible (Hors Service)\n- 4 : \"Time remaining\", La machine est démarrée (type temporisée), le temps restant est disponnible (`remaining_time`)\n- 5 : \"Output Unavailable\", La machine est indisponnible car la sortie est introuvable (carte relais HS)\n- 6 : \"Error Time Invalid\", Le temps restant est érroné \n- 7 : \"Manually ON\", Sortie manuelle, activée\n- 8 : \"Manually OFF\", Sortie manuelle, désactivée\n- 9 : \"Automatic ON\", Sortie Automatique, activée\n- 10 : \"Automatic OFF\", Sortie Automatique, désactivée\n- 11 : \"Time remaining (Estimated)\", La machine est démarrée, le temps restant estimé est disponnible (`remaining_time`)\n- 12 : \"Busy / Time remaining (Estimated)\", La machine est démarrée, le temps restant estimé est disponnible (`remaining_time`)",
+            "url": {
+              "raw": "{{server}}/centrales/{{centrale_serial}}/status",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "centrales",
+                "{{centrale_serial}}",
+                "status"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Machines",
+      "item": [
+        {
+          "name": "Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "Affiche le status générale d'une centrale\n\n\n- `machine_number` : Numéro de sélection de la machine, 0 indique que la machine n'est pas sélectionnable\n- `name`: Le nom de la machine, utilisé uniquement pour les machines non sélectionnable\n- `type_name`: Le nom du type de la machine, Ex : \"Machine 9Kg\"\n- `status`: Status de la machine (voir liste ci-apres)\n- `status_text` : Texte descriptif du status\n- `remaining_time`: Temps restant sur la machine (En secondes)\n- `start_time`: Heure de debut d'utilisation autorisée\n- `stop_time`: Heure de fin d'utilisation autorisée\n- `price`: Prix normal (en centimes)\n- `reduced_price` : Prix réduit (en centimes)\n- `reduced_start`: Heure de début de réduction du prix\n- `reduced_stop` : Heure de fin de réduction du prix\n- `reduced_days` : BitField contenant les jours oû les prix réduit sont actifs (LSB: Dimanche)\n\n\n## Les status sont:\n- 1 : \"Free\", La machine est libre, le retour d'occupation n'est pas actif\n- 2 : \"Busy\", La machine est démarrée (type Occupation), le retour d'occupation est actif (Pas de durée estimable)\n- 3 : \"Out of service\", La machine est indisponnible (Hors Service)\n- 4 : \"Time remaining\", La machine est démarrée (type temporisée), le temps restant est disponnible (`remaining_time`)\n- 5 : \"Output Unavailable\", La machine est indisponnible car la sortie est introuvable (carte relais HS)\n- 6 : \"Error Time Invalid\", Le temps restant est érroné \n- 7 : \"Manually ON\", Sortie manuelle, activée\n- 8 : \"Manually OFF\", Sortie manuelle, désactivée\n- 9 : \"Automatic ON\", Sortie Automatique, activée\n- 10 : \"Automatic OFF\", Sortie Automatique, désactivée\n- 11 : \"Time remaining (Estimated)\", La machine est démarrée, le temps restant estimé est disponnible (`remaining_time`)\n- 12 : \"Busy / Time remaining (Estimated)\", La machine est démarrée, le temps restant estimé est disponnible (`remaining_time`)",
+            "url": {
+              "raw": "{{server}}/centrales/{{centrale_serial}}/machines/{{machine_num}}",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "centrales",
+                "{{centrale_serial}}",
+                "machines",
+                "{{machine_num}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Laundry map",
+      "item": [
+        {
+          "name": "List Centrale Allowed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "Récupere la liste des centrales associés au compte",
+            "url": {
+              "raw": "{{server}}/laundry_map/centrales",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "laundry_map",
+                "centrales"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            }
+          },
+          "response": [
+            {
+              "name": "example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{server}}/laundry_map/centrales",
+                  "protocol": "",
+                  "host": [
+                    "{{server}}"
+                  ],
+                  "path": [
+                    "laundry_map",
+                    "centrales"
+                  ],
+                  "query": [],
+                  "variable": []
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "date",
+                  "value": "Tue, 03 Feb 2026 14:18:16 GMT",
+                  "name": "date",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "server",
+                  "value": "Apache/2.4.62 (Debian)",
+                  "name": "server",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "content-length",
+                  "value": "572",
+                  "name": "content-length",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "keep-alive",
+                  "value": "timeout=5, max=100",
+                  "name": "keep-alive",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "connection",
+                  "value": "Keep-Alive",
+                  "name": "connection",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json",
+                  "name": "content-type",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Wi-Line\",\n    \"serial\": \"17415410EC125A03\",\n    \"link\": \"/laundry_map/centrales/17415410EC125A03\"\n  },\n  {\n    \"id\": 250,\n    \"name\": \"Brice\",\n    \"serial\": \"18285410ECC74501\",\n    \"link\": \"/laundry_map/centrales/18285410ECC74501\"\n  },\n  {\n    \"id\": 1471,\n    \"name\": \"Wi-Touch Brice\",\n    \"serial\": \"2225102F0E1008A7\",\n    \"link\": \"/laundry_map/centrales/2225102F0E1008A7\"\n  },\n  {\n    \"id\": 1554,\n    \"name\": \"Wi-Wash Touch\",\n    \"serial\": \"23128C02604C1521\",\n    \"link\": \"/laundry_map/centrales/23128C02604C1521\"\n  },\n  {\n    \"id\": 1737,\n    \"name\": \"❇️ Wi-line Touch\",\n    \"serial\": \"23458C01604C155D\",\n    \"link\": \"/laundry_map/centrales/23458C01604C155D\"\n  }\n]",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "List Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "Récupere la liste des centrales associés au compte avec le numéro de la dernière transaction de chacune.",
+            "url": {
+              "raw": "{{server}}/laundry_map/centrales/{{centrale_serial}}",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "laundry_map",
+                "centrales",
+                "{{centrale_serial}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            }
+          },
+          "response": [
+            {
+              "name": "example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{server}}/laundry_map/centrales/{{centrale_serial}}",
+                  "protocol": "",
+                  "host": [
+                    "{{server}}"
+                  ],
+                  "path": [
+                    "laundry_map",
+                    "centrales",
+                    "{{centrale_serial}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "date",
+                  "value": "Tue, 03 Feb 2026 14:18:29 GMT",
+                  "name": "date",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "server",
+                  "value": "Apache/2.4.62 (Debian)",
+                  "name": "server",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "content-length",
+                  "value": "4362",
+                  "name": "content-length",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "keep-alive",
+                  "value": "timeout=5, max=100",
+                  "name": "keep-alive",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "connection",
+                  "value": "Keep-Alive",
+                  "name": "connection",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json",
+                  "name": "content-type",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1554,\n  \"name\": \"Wi-Wash Touch\",\n  \"serial\": \"23128C02604C1521\",\n  \"link\": \"/laundry_map/centrales/23128C02604C1521\",\n  \"address\": \"4 Boulevard Napoléon Premier\",\n  \"postal_code\": \"95290\",\n  \"city\": \"L'Isle Adam\",\n  \"country\": \"France\",\n  \"phone\": \"01 83 02 02 02\",\n  \"vat_number\": \"FR123456789\",\n  \"pub\": \"venez nous rencontrer sur le salon\",\n  \"logo\": \"https://wi-line.fr/storage/upload/logo/a77f151d1727c4b5673fca1d43ecdab05d726dab5e2e382d08e9ae2881e180f995073eef8ade793d95387554acf8228452a5a28814362e8313e681cf9bf035cf.png\",\n  \"timezone\": \"Europe/Paris\",\n  \"currency_utf8\": \"€\",\n  \"currency_iso4217\": \"EUR\",\n  \"coin_accepted\": false,\n  \"bill_accepted\": false,\n  \"card_accepted\": false,\n  \"fidelity_accepted\": true,\n  \"opening_hours\": {\n    \"monday\": [\n      {\n        \"open\": \"08:30\",\n        \"close\": \"12:30\"\n      },\n      {\n        \"open\": \"13:30\",\n        \"close\": \"17:00\"\n      }\n    ],\n    \"thuesday\": [\n      {\n        \"open\": \"08:30\",\n        \"close\": \"12:30\"\n      },\n      {\n        \"open\": \"13:30\",\n        \"close\": \"17:00\"\n      }\n    ],\n    \"wednesday\": [\n      {\n        \"open\": \"08:30\",\n        \"close\": \"12:30\"\n      },\n      {\n        \"open\": \"13:30\",\n        \"close\": \"17:00\"\n      }\n    ],\n    \"thursday\": [\n      {\n        \"open\": \"08:30\",\n        \"close\": \"12:30\"\n      },\n      {\n        \"open\": \"13:30\",\n        \"close\": \"17:00\"\n      }\n    ],\n    \"friday\": [\n      {\n        \"open\": \"08:30\",\n        \"close\": \"13:30\"\n      }\n    ],\n    \"saturday\": [],\n    \"sunday\": []\n  },\n  \"machines\": [\n    {\n      \"machine_id\": 27776,\n      \"machine_number\": 11,\n      \"name\": \"\",\n      \"type_name\": \"Machine 16kg\",\n      \"category\": 1,\n      \"category_text\": \"WASH\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 800,\n      \"reduced_price\": 750,\n      \"reduced_start\": \"08:00:00\",\n      \"reduced_stop\": \"18:00:00\",\n      \"reduced_days\": 115,\n      \"duration\": 0,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 27777,\n      \"machine_number\": 12,\n      \"name\": \"\",\n      \"type_name\": \"Machine 16kg\",\n      \"category\": 1,\n      \"category_text\": \"WASH\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 800,\n      \"reduced_price\": 800,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"00:00:00\",\n      \"reduced_days\": 48,\n      \"duration\": 0,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 27772,\n      \"machine_number\": 15,\n      \"name\": \"\",\n      \"type_name\": \"Machine 8kg\",\n      \"category\": 1,\n      \"category_text\": \"WASH\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 450,\n      \"reduced_price\": 450,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"00:00:00\",\n      \"reduced_days\": 0,\n      \"duration\": 600,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 27773,\n      \"machine_number\": 16,\n      \"name\": \"\",\n      \"type_name\": \"Machine 8kg\",\n      \"category\": 1,\n      \"category_text\": \"WASH\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 450,\n      \"reduced_price\": 450,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"23:59:59\",\n      \"reduced_days\": 56,\n      \"duration\": 600,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 27775,\n      \"machine_number\": 21,\n      \"name\": \"\",\n      \"type_name\": \"Sechoir 8kg\",\n      \"category\": 2,\n      \"category_text\": \"DRY\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 100,\n      \"reduced_price\": 100,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"00:00:00\",\n      \"reduced_days\": 48,\n      \"duration\": 600,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 27774,\n      \"machine_number\": 22,\n      \"name\": \"\",\n      \"type_name\": \"Sechoir 8kg\",\n      \"category\": 2,\n      \"category_text\": \"DRY\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 100,\n      \"reduced_price\": 100,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"00:00:00\",\n      \"reduced_days\": 0,\n      \"duration\": 600,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 27779,\n      \"machine_number\": 25,\n      \"name\": \"\",\n      \"type_name\": \"Sechoir 16kg\",\n      \"category\": 2,\n      \"category_text\": \"DRY\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 120,\n      \"reduced_price\": 110,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"00:00:00\",\n      \"reduced_days\": 48,\n      \"duration\": 60,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 27778,\n      \"machine_number\": 26,\n      \"name\": \"\",\n      \"type_name\": \"Sechoir 16kg\",\n      \"category\": 2,\n      \"category_text\": \"DRY\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 120,\n      \"reduced_price\": 120,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"00:00:00\",\n      \"reduced_days\": 0,\n      \"duration\": 60,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 27781,\n      \"machine_number\": 55,\n      \"name\": \"\",\n      \"type_name\": \"Snack\",\n      \"category\": 4,\n      \"category_text\": \"OTHERS\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 100,\n      \"reduced_price\": 100,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"00:00:00\",\n      \"reduced_days\": 48,\n      \"duration\": 0,\n      \"out_of_order\": false\n    },\n    {\n      \"machine_id\": 31755,\n      \"machine_number\": 80,\n      \"name\": \"\",\n      \"type_name\": \"Lessive\",\n      \"category\": 3,\n      \"category_text\": \"PRODUCTS\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 100,\n      \"reduced_price\": 100,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"23:59:59\",\n      \"reduced_days\": 0,\n      \"duration\": 10,\n      \"out_of_order\": true\n    },\n    {\n      \"machine_id\": 27780,\n      \"machine_number\": 81,\n      \"name\": \"\",\n      \"type_name\": \"Assouplisant\",\n      \"category\": 3,\n      \"category_text\": \"PRODUCTS\",\n      \"start_time\": \"00:00:00\",\n      \"stop_time\": \"23:59:59\",\n      \"price\": 100,\n      \"reduced_price\": 100,\n      \"reduced_start\": \"00:00:00\",\n      \"reduced_stop\": \"00:00:00\",\n      \"reduced_days\": 0,\n      \"duration\": 5,\n      \"out_of_order\": false\n    }\n  ]\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Auth",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Connexion au service en ligne Wi-Line  \n\nLe token généré est à utilisé pour toutes les autres requettes à l'API Wi-Line  \n\nLa génération du token rend automatiquement les anciens tokens de ce compte obsolete.  \n\n# Valeur de retour  \n- `status` : True si la connexion à réussie, false sinon\n- `token`: Le token à utilisé pour la suite de l'API\n- `exp` : Timestamp d'expiration du token",
+            "url": {
+              "raw": "{{server}}/auth",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "auth"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "user",
+                  "value": "{{api_user}}",
+                  "disabled": false,
+                  "type": "default"
+                },
+                {
+                  "key": "api_key",
+                  "value": "{{api_key}}",
+                  "disabled": false,
+                  "type": "default"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "example",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{server}}/auth",
+                  "protocol": "",
+                  "host": [
+                    "{{server}}"
+                  ],
+                  "path": [
+                    "auth"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "user",
+                      "value": "{{api_user}}",
+                      "disabled": false,
+                      "type": "default"
+                    },
+                    {
+                      "key": "api_key",
+                      "value": "{{api_key}}",
+                      "disabled": false,
+                      "type": "default"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "date",
+                  "value": "Tue, 03 Feb 2026 14:18:46 GMT",
+                  "name": "date",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "server",
+                  "value": "Apache/2.4.62 (Debian)",
+                  "name": "server",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "set-cookie",
+                  "value": "PHPSESSID=sess-0b4465feee337e5ee218b3cfdc83eadf; path=/",
+                  "name": "set-cookie",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "expires",
+                  "value": "Thu, 19 Nov 1981 08:52:00 GMT",
+                  "name": "expires",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-store, no-cache, must-revalidate",
+                  "name": "cache-control",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "pragma",
+                  "value": "no-cache",
+                  "name": "pragma",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "x-ratelimit-limit",
+                  "value": "5",
+                  "name": "x-ratelimit-limit",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "x-ratelimit-remaining",
+                  "value": "4",
+                  "name": "x-ratelimit-remaining",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "content-length",
+                  "value": "260",
+                  "name": "content-length",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "keep-alive",
+                  "value": "timeout=5, max=100",
+                  "name": "keep-alive",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "connection",
+                  "value": "Keep-Alive",
+                  "name": "connection",
+                  "description": "",
+                  "type": "text"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json",
+                  "name": "content-type",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": true,\n  \"token\": \"eyJ0eXAi.......iyc\",\n  \"exp\": 1770214726\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Counter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "## Récupere le compteur de transaction d'une centrale\n\n\n- `serial` : Numéro de série de la centrale\n- `name`: Le nom de la centrale\n- `current_transaction_id`: Compteur actuel du nombre de transaction de la centrale",
+            "url": {
+              "raw": "{{server}}/centrales/{{centrale_serial}}/transaction",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "centrales",
+                "{{centrale_serial}}",
+                "transaction"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "## Affiche le detail d'un transaction\n\n- `transaction_num` : Numéro de la transaction\n- `machine_number` : Numéro de sélection de la machine, 0 indique que la machine n'est pas sélectionnable\n- `name`: Le nom de la machine, utilisé uniquement pour les machines non sélectionnable\n- `type_name`: Le nom du type de la machine, Ex : \"Machine 9Kg\"\n- `date`: Date de la fin de la transaction (UTC format ISO)\n- `type`: Type de transaction (voir ci-après)\n- `type_text` : Texte descriptif du type de transaction\n- `machine_price`: Prix unitaire demandé lors du paiement (prends en compte le prix réduit si actif au moment du paiement) (en centimes)\n- `returned`: Somme rendue par la centrale en fin de paiement (en centimes)\n- `is_reduced_price`: Flag indiquant si le prix est réduit ou non\n- `cumul`: Nombre de cycles demandé (possibililité de multiplier les cycles des séchoirs par ex.)\n- `payments` : List des paiements recus par la centrale :\n\t- `type`: Type de paiement (pieces, billet, cb, privatif, ...)\n\t- `type_text`: Type de paiement (pieces, billet, cb, privatif, ...)\n\t- `value` : Somme insérée pour ce paiement (en centimes)\n\n\n## Les types sont:\n- 1 : \"Payed Start\", La machine est démarré par un paiement \n- 2 : \"Remote Start\", La machine est démarrée par une demande distante (site web)\n- 3 : \"Remote Refund\", De l'argent à été rendu par la centrale de paiement par une demande distante (site web)\n- 4 : \"Maintenance Start\", La machine est démarrée par le bouton de mantenance de la centrale  \n- 5 : unsused\n- 6 : \"Not Selected\", Un paiement à été recu alors qu'aucune machine n'est sélectionnée .\n- 7 : \"Canceled\", Un paiement à été annulé, la somme percu doit être remboursée \n- 8 : \"Private Card Refill\", Rechargement d'une carte/clée privative\n- 9 : \"Private Card Start\", Démarrage d'une machine par une clée privative\n- 10 : \"Service Payment\", Paiement d'un service \n- 11 : \"Free Code Start\", Démarrage d'une machine par code de gratuité \n\n\n\n## Les types de paiement sont:\n- 1 : \"Coins\", Paiement en pieces\n- 2 : \"Bills\", Paiement en billets\n- 3 : \"Cashless\", Paiement en cashless (CB)\n- 4 : \"Private\", Paiement privatif",
+            "url": {
+              "raw": "{{server}}/centrales/{{centrale_serial}}/transaction/{{transaction_num}}",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "centrales",
+                "{{centrale_serial}}",
+                "transaction",
+                "{{transaction_num}}"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "List Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+              }
+            },
+            "description": "⚠  `nombre_transaction` doit être entre 1 et 100.\n## Affiche le detail d'une liste de transactions\n\n- `transaction_num` : Numéro de la transaction\n- `machine_number` : Numéro de sélection de la machine, 0 indique que la machine n'est pas sélectionnable\n- `name`: Le nom de la machine, utilisé uniquement pour les machines non sélectionnable\n- `type_name`: Le nom du type de la machine, Ex : \"Machine 9Kg\"\n- `date`: Date de la fin de la transaction (UTC format ISO)\n- `type`: Type de transaction (voir ci-après)\n- `type_text` : Texte descriptif du type de transaction\n- `machine_price`: Prix unitaire demandé lors du paiement (prends en compte le prix réduit si actif au moment du paiement) (en centimes)\n- `returned`: Somme rendue par la centrale en fin de paiement (en centimes)\n- `is_reduced_price`: Flag indiquant si le prix est réduit ou non\n- `cumul`: Nombre de cycles demandé (possibililité de multiplier les cycles des séchoirs par ex.)\n- `payments` : List des paiements recus par la centrale :\n\t- `type`: Type de paiement (pieces, billet, cb, privatif, ...)\n\t- `type_text`: Type de paiement (pieces, billet, cb, privatif, ...)\n\t- `value` : Somme insérée pour ce paiement (en centimes)\n\n\n## Les types sont:\n- 1 : \"Payed Start\", La machine est démarré par un paiement \n- 2 : \"Remote Start\", La machine est démarrée par une demande distante (site web)\n- 3 : \"Remote Refund\", De l'argent à été rendu par la centrale de paiement par une demande distante (site web)\n- 4 : \"Maintenance Start\", La machine est démarrée par le bouton de mantenance de la centrale  \n- 5 : unsused\n- 6 : \"Not Selected\", Un paiement à été recu alors qu'aucune machine n'est sélectionnée .\n- 7 : \"Canceled\", Un paiement à été annulé, la somme percu doit être remboursée \n- 8 : \"Private Card Refill\", Rechargement d'une carte/clée privative\n- 9 : \"Private Card Start\", Démarrage d'une machine par une clée privative\n- 10 : \"Service Payment\", Paiement d'un service \n- 11 : \"Free Code Start\", Démarrage d'une machine par code de gratuité \n\n\n\n## Les types de paiement sont:\n- 1 : \"Coins\", Paiement en pieces\n- 2 : \"Bills\", Paiement en billets\n- 3 : \"Cashless\", Paiement en cashless (CB)\n- 4 : \"Private\", Paiement privatif\n\n",
+            "url": {
+              "raw": "{{server}}/centrales/{{centrale_serial}}/transaction/list/{{transaction_num}}/{{nombre_transaction}}",
+              "protocol": "",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "centrales",
+                "{{centrale_serial}}",
+                "transaction",
+                "list",
+                "{{transaction_num}}",
+                "{{nombre_transaction}}"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "server",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "centrale_serial",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "machine_num",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "api_user",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "transaction_num",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "nombre_transaction",
+      "value": "",
+      "type": "default"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          "const reqName = req.getName();",
+          "  const token = bru.getEnvVar(\"token\");",
+          "  const expVar = bru.getEnvVar(\"exp\");",
+          "  const expIsNumber = typeof expVar === 'number' && !isNaN(expVar);",
+          "  const currentTimeSec = Date.now() / 1000;",
+          "  const timeRemaining = parseInt(expVar) - currentTimeSec;",
+          "  const hoursRemaining = Math.floor(timeRemaining / 3600); ",
+          "  const minutesRemaining = Math.floor((timeRemaining % 3600) / 60); ",
+          "  const secondsRemaining = Math.floor(timeRemaining % 60); ",
+          "  ",
+          "  if (reqName == \"Auth\"){",
+          "    //console.log(\"⛔ Already in Auth request, do not execut Auth\");",
+          "    if (token && token !== \"\" && expIsNumber && parseInt(expVar) > currentTimeSec) {",
+          "      bru.runner.skipRequest();",
+          "      console.log(`✅ Token and expiry date are valid. Time remaining: ${hoursRemaining}h ${minutesRemaining}m ${secondsRemaining}s`);",
+          "    }",
+          "    return;",
+          "  }",
+          "  ",
+          "  console.log(\"🔍 Checking token and expiry for [\"+reqName+\"]\");",
+          "  ",
+          "  let getToken = true;",
+          "  ",
+          "  if (token && token !== \"\" && expIsNumber && parseInt(expVar) > currentTimeSec) {",
+          "      getToken = false;",
+          "      //console.log(`✅ Token and expiry date are valid. Time remaining: ${hoursRemaining}h ${minutesRemaining}m ${secondsRemaining}s`);",
+          "  } else {",
+          "      console.log(\"❌ Token missing or expired\");",
+          "  }",
+          "  ",
+          "  if (getToken) {",
+          "    console.log(\"🔁 Fetching new token via 'Auth' request...\");",
+          "    await bru.runRequest(\"Auth\", function (err, res) {",
+          "      if (err) {",
+          "          console.error(\"❌ Auth request failed:\", err);",
+          "      } else {",
+          "        console.log(\"✅ Auth response received:\", res.data);",
+          "        const responseJson = res.data;",
+          "",
+          "        if (responseJson.token && responseJson.exp) {",
+          "            bru.setEnvVar(\"token\", responseJson.token);",
+          "            bru.setEnvVar(\"exp\", responseJson.exp);",
+          "            console.log(\"🔐 Token and expiration updated\");",
+          "        } else {",
+          "            console.error(\"❌ Invalid response format from Auth:\", responseJson);",
+          "        }",
+          "      }",
+          "    });",
+          "  }  "
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          "let reqName = req.getName();",
+          "  if (reqName == \"Auth\"){",
+          "    console.log(\"It's an auth get data !\");",
+          "    let data = res.getBody();",
+          "    if (data.token && data.exp) {",
+          "      bru.setEnvVar(\"token\", data.token);",
+          "      bru.setEnvVar(\"exp\", data.exp);",
+          "      console.log(\"🔐 Token and expiration updated\");",
+          "    } else {",
+          "        console.error(\"❌ Invalid response format from Auth:\", data);",
+          "    }",
+          "  }"
+        ]
+      }
+    }
+  ]
+}
