@@ -6,8 +6,10 @@ use App\Entity\Address;
 use App\Entity\Laundry;
 use App\Entity\LaundryClosure;
 use App\Entity\LaundryEquipment;
+use App\Entity\LaundryMedia;
 use App\Entity\LaundryPayment;
 use App\Entity\LaundryService;
+use App\Entity\Media;
 use App\Entity\PaymentMethod;
 use App\Entity\Professional;
 use App\Entity\Service;
@@ -19,12 +21,192 @@ use App\Enum\LaundryStatusEnum;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\LaundryNoteRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 class ProfessionalController extends AbstractController
 {
+    #[Route('/api/professional/laundries/{id}/logo', name: 'api_professional_laundry_logo_upload', methods: ['POST'])]
+    public function uploadLaundryLogo(int $id, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $professional = $this->getCurrentProfessional($entityManager);
+        if ($professional === null) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        $laundry = $entityManager->getRepository(Laundry::class)->find($id);
+        if (!$laundry || $laundry->getProfessional()?->getId() !== $professional->getId()) {
+            return $this->json(['error' => 'errors.laundry_not_found'], 404);
+        }
+
+        $logoFile = $request->files->get('logo');
+        if (!$logoFile instanceof UploadedFile) {
+            return $this->json(['errors' => ['logo' => 'validation.logo_required']], 400);
+        }
+
+        $mimeType = (string) $logoFile->getMimeType();
+        $originalName = (string) $logoFile->getClientOriginalName();
+        $fileWeight = (int) ($logoFile->getSize() ?? 0);
+        if (!str_starts_with($mimeType, 'image/')) {
+            return $this->json(['errors' => ['logo' => 'validation.logo_invalid_type']], 400);
+        }
+
+        if ($fileWeight > 5 * 1024 * 1024) {
+            return $this->json(['errors' => ['logo' => 'validation.logo_too_large']], 400);
+        }
+
+        $uploadDirectory = $this->getParameter('kernel.project_dir') . '/public/uploads/laundries';
+        if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0775, true) && !is_dir($uploadDirectory)) {
+            return $this->json(['error' => 'errors.generic_error'], 500);
+        }
+
+        $safeBaseName = preg_replace('/[^a-zA-Z0-9_-]/', '-', pathinfo($originalName, PATHINFO_FILENAME) ?: 'logo');
+        $safeBaseName = trim((string) $safeBaseName, '-_');
+        $safeBaseName = $safeBaseName !== '' ? strtolower($safeBaseName) : 'logo';
+        $extension = $logoFile->guessExtension() ?: $logoFile->getClientOriginalExtension() ?: 'bin';
+        $fileName = sprintf('%s-%s.%s', $safeBaseName, bin2hex(random_bytes(6)), strtolower($extension));
+
+        try {
+            $logoFile->move($uploadDirectory, $fileName);
+        } catch (\Throwable $exception) {
+            return $this->json(['error' => 'errors.generic_error'], 500);
+        }
+
+        $media = new Media();
+        $media->setLocation('/uploads/laundries/' . $fileName);
+        $media->setOriginalName($originalName !== '' ? $originalName : $fileName);
+        $media->setWeight($fileWeight);
+        $media->setMimeType($mimeType !== '' ? $mimeType : 'application/octet-stream');
+
+        $laundry->setLogo($media);
+        $laundry->setUpdatedAt(new \DateTime());
+
+        $entityManager->persist($media);
+        $entityManager->flush();
+
+        return $this->json($this->formatLaundry($laundry));
+    }
+
+    #[Route('/api/professional/laundries/{id}/medias', name: 'api_professional_laundry_medias_upload', methods: ['POST'])]
+    public function uploadLaundryMedias(int $id, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $professional = $this->getCurrentProfessional($entityManager);
+        if ($professional === null) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        $laundry = $entityManager->getRepository(Laundry::class)->find($id);
+        if (!$laundry || $laundry->getProfessional()?->getId() !== $professional->getId()) {
+            return $this->json(['error' => 'errors.laundry_not_found'], 404);
+        }
+
+        $mediaFiles = $this->extractUploadedFiles($request, ['medias', 'medias[]', 'mediaFiles', 'mediaFiles[]']);
+        if ($mediaFiles === []) {
+            return $this->json(['errors' => ['medias' => 'validation.media_required']], 400);
+        }
+
+        $uploadDirectory = $this->getParameter('kernel.project_dir') . '/public/uploads/laundries';
+        if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0775, true) && !is_dir($uploadDirectory)) {
+            return $this->json(['error' => 'errors.generic_error'], 500);
+        }
+
+        foreach ($mediaFiles as $mediaFile) {
+            if (!$mediaFile instanceof UploadedFile) {
+                continue;
+            }
+
+            $mimeType = (string) $mediaFile->getMimeType();
+            $originalName = (string) $mediaFile->getClientOriginalName();
+            $fileWeight = (int) ($mediaFile->getSize() ?? 0);
+
+            if (!str_starts_with($mimeType, 'image/')) {
+                return $this->json(['errors' => ['medias' => 'validation.logo_invalid_type']], 400);
+            }
+
+            if ($fileWeight > 8 * 1024 * 1024) {
+                return $this->json(['errors' => ['medias' => 'validation.media_too_large']], 400);
+            }
+
+            $safeBaseName = preg_replace('/[^a-zA-Z0-9_-]/', '-', pathinfo($originalName, PATHINFO_FILENAME) ?: 'media');
+            $safeBaseName = trim((string) $safeBaseName, '-_');
+            $safeBaseName = $safeBaseName !== '' ? strtolower($safeBaseName) : 'media';
+            $extension = $mediaFile->guessExtension() ?: $mediaFile->getClientOriginalExtension() ?: 'bin';
+            $fileName = sprintf('%s-%s.%s', $safeBaseName, bin2hex(random_bytes(6)), strtolower($extension));
+
+            try {
+                $mediaFile->move($uploadDirectory, $fileName);
+            } catch (\Throwable $exception) {
+                return $this->json(['error' => 'errors.generic_error'], 500);
+            }
+
+            $media = new Media();
+            $media->setLocation('/uploads/laundries/' . $fileName);
+            $media->setOriginalName($originalName !== '' ? $originalName : $fileName);
+            $media->setWeight($fileWeight);
+            $media->setMimeType($mimeType !== '' ? $mimeType : 'application/octet-stream');
+
+            $laundryMedia = new LaundryMedia();
+            $laundryMedia->setLaundry($laundry);
+            $laundryMedia->setMedia($media);
+            $laundryMedia->setDescription('');
+
+            $entityManager->persist($media);
+            $entityManager->persist($laundryMedia);
+        }
+
+        $laundry->setUpdatedAt(new \DateTime());
+        $entityManager->flush();
+
+        return $this->json($this->formatLaundry($laundry));
+    }
+
+    #[Route('/api/professional/laundries/{id}/medias/{mediaId}', name: 'api_professional_laundry_media_delete', methods: ['DELETE'])]
+    public function deleteLaundryMedia(int $id, int $mediaId, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $professional = $this->getCurrentProfessional($entityManager);
+        if ($professional === null) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        $laundry = $entityManager->getRepository(Laundry::class)->find($id);
+        if (!$laundry || $laundry->getProfessional()?->getId() !== $professional->getId()) {
+            return $this->json(['error' => 'errors.laundry_not_found'], 404);
+        }
+
+        $media = $entityManager->getRepository(Media::class)->find($mediaId);
+        if (!$media) {
+            return $this->json(['error' => 'errors.media_not_found'], 404);
+        }
+
+        $laundryMedia = $entityManager->getRepository(LaundryMedia::class)->findOneBy([
+            'laundry' => $laundry,
+            'media' => $media,
+        ]);
+
+        if (!$laundryMedia) {
+            return $this->json(['error' => 'errors.media_not_found'], 404);
+        }
+
+        if ($laundry->getLogo()?->getId() === $media->getId()) {
+            $laundry->setLogo(null);
+        }
+
+        $mediaLocation = $media->getLocation();
+        $entityManager->remove($laundryMedia);
+        $entityManager->remove($media);
+        $laundry->setUpdatedAt(new \DateTime());
+        $entityManager->flush();
+
+        $absolutePath = $this->getParameter('kernel.project_dir') . '/public' . $mediaLocation;
+        if (str_starts_with($mediaLocation, '/uploads/laundries/') && is_file($absolutePath)) {
+            @unlink($absolutePath);
+        }
+
+        return $this->json($this->formatLaundry($laundry));
+    }
+
     #[Route('/api/professional/laundry-options', name: 'api_professional_laundry_options', methods: ['GET'])]
     public function getLaundryOptions(EntityManagerInterface $entityManager): JsonResponse
     {
@@ -38,16 +220,18 @@ class ProfessionalController extends AbstractController
 
         return $this->json([
             'services' => array_map(
-                static fn (Service $service): array => [
+                fn (Service $service): array => [
                     'id' => $service->getId(),
                     'name' => $service->getName(),
+                    'translationKey' => $this->getServiceTranslationKey($service->getName()),
                 ],
                 $services
             ),
             'paymentMethods' => array_map(
-                static fn (PaymentMethod $paymentMethod): array => [
+                fn (PaymentMethod $paymentMethod): array => [
                     'id' => $paymentMethod->getId(),
                     'name' => $paymentMethod->getName(),
+                    'translationKey' => $this->getPaymentMethodTranslationKey($paymentMethod->getName()),
                 ],
                 $paymentMethods
             ),
@@ -104,7 +288,11 @@ class ProfessionalController extends AbstractController
         }
 
         $laundry = $entityManager->getRepository(Laundry::class)->find($id);
-        if (!$laundry || $laundry->getProfessional()?->getId() !== $professional->getId()) {
+        if (
+            !$laundry
+            || $laundry->getProfessional()?->getId() !== $professional->getId()
+            || $laundry->getDeletedAt() !== null
+        ) {
             return $this->json(['error' => 'errors.laundry_not_found'], 404);
         }
 
@@ -120,7 +308,11 @@ class ProfessionalController extends AbstractController
         }
 
         $laundry = $entityManager->getRepository(Laundry::class)->find($id);
-        if (!$laundry || $laundry->getProfessional()?->getId() !== $professional->getId()) {
+        if (
+            !$laundry
+            || $laundry->getProfessional()?->getId() !== $professional->getId()
+            || $laundry->getDeletedAt() !== null
+        ) {
             return $this->json(['error' => 'errors.laundry_not_found'], 404);
         }
 
@@ -140,6 +332,33 @@ class ProfessionalController extends AbstractController
         return $this->json($this->formatLaundry($laundry));
     }
 
+    #[Route('/api/professional/laundries/{id}', name: 'api_professional_laundry_delete', methods: ['DELETE'])]
+    public function deleteLaundry(int $id, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $professional = $this->getCurrentProfessional($entityManager);
+        if ($professional === null) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        $laundry = $entityManager->getRepository(Laundry::class)->find($id);
+        if (
+            !$laundry
+            || $laundry->getProfessional()?->getId() !== $professional->getId()
+            || $laundry->getDeletedAt() !== null
+        ) {
+            return $this->json(['error' => 'errors.laundry_not_found'], 404);
+        }
+
+        $laundry->setDeletedAt(new \DateTime());
+        $laundry->setUpdatedAt(new \DateTime());
+        $entityManager->flush();
+
+        return $this->json([
+            'message' => 'Laundry deleted successfully',
+            'id' => $laundry->getId(),
+        ]);
+    }
+
     #[Route('/api/professional/laundries', name: 'api_professional_laundries', methods: ['GET'])]
     public function getLaundries(EntityManagerInterface $entityManager, LaundryNoteRepository $laundryNoteRepository): JsonResponse
     {
@@ -156,6 +375,10 @@ class ProfessionalController extends AbstractController
         $rejected = 0;
         $laundryIds = [];
         foreach ($laundries as $laundry) {
+            if ($laundry->getDeletedAt() !== null) {
+                continue;
+            }
+
             $address = $laundry->getAddress();
             $status = $laundry->getStatus()?->value ?? '';
             $result[] = [
@@ -263,7 +486,132 @@ class ProfessionalController extends AbstractController
             }
         }
 
+        $this->validateOpeningHoursPayload($payload, $errors);
+
         return $errors;
+    }
+
+    private function validateOpeningHoursPayload(array $payload, array &$errors): void
+    {
+        $openingHours = $payload['openingHours'] ?? null;
+        $openingHoursExtra = $payload['openingHoursExtra'] ?? [];
+
+        if ($openingHours !== null && !is_array($openingHours)) {
+            $errors['openingHours'] = 'validation.opening_hours_invalid_format';
+            return;
+        }
+
+        if ($openingHoursExtra !== null && !is_array($openingHoursExtra)) {
+            $errors['openingHoursExtra'] = 'validation.opening_hours_invalid_format';
+            return;
+        }
+
+        foreach (DayOfWeekEnum::cases() as $dayEnum) {
+            $dayKey = $dayEnum->value;
+            $daySlots = [];
+
+            $primarySlot = $openingHours[$dayKey] ?? null;
+            if ($primarySlot !== null && !is_array($primarySlot)) {
+                $errors["openingHours.$dayKey"] = 'validation.opening_hours_invalid_format';
+                continue;
+            }
+
+            if (is_array($primarySlot)) {
+                $normalizedPrimary = $this->normalizeAndValidateSlot($primarySlot, "openingHours.$dayKey", $errors);
+                if ($normalizedPrimary !== null) {
+                    $daySlots[] = $normalizedPrimary;
+                }
+            }
+
+            $extraSlots = $openingHoursExtra[$dayKey] ?? [];
+            if (!is_array($extraSlots)) {
+                $errors["openingHoursExtra.$dayKey"] = 'validation.opening_hours_invalid_format';
+                continue;
+            }
+
+            foreach ($extraSlots as $slotIndex => $extraSlot) {
+                if (!is_array($extraSlot)) {
+                    $errors["openingHoursExtra.$dayKey.$slotIndex"] = 'validation.opening_hours_invalid_format';
+                    continue;
+                }
+
+                $normalizedExtra = $this->normalizeAndValidateSlot(
+                    $extraSlot,
+                    "openingHoursExtra.$dayKey.$slotIndex",
+                    $errors
+                );
+
+                if ($normalizedExtra !== null) {
+                    $daySlots[] = $normalizedExtra;
+                }
+            }
+
+            if (count($daySlots) > 1) {
+                usort(
+                    $daySlots,
+                    static fn (array $a, array $b): int => strcmp($a['open'], $b['open'])
+                );
+
+                for ($i = 1; $i < count($daySlots); $i++) {
+                    if ($daySlots[$i]['open'] < $daySlots[$i - 1]['close']) {
+                        $errors["openingHours.$dayKey"] = 'validation.opening_hours_overlap';
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private function normalizeAndValidateSlot(array $slot, string $fieldKey, array &$errors): ?array
+    {
+        $open = trim((string) ($slot['open'] ?? ''));
+        $close = trim((string) ($slot['close'] ?? ''));
+
+        if ($open === '' && $close === '') {
+            return null;
+        }
+
+        if ($open === '' || $close === '') {
+            $errors[$fieldKey] = 'validation.opening_hours_slot_incomplete';
+            return null;
+        }
+
+        if (!$this->isValidHourFormat($open) || !$this->isValidHourFormat($close)) {
+            $errors[$fieldKey] = 'validation.opening_hours_invalid_format';
+            return null;
+        }
+
+        if ($open >= $close) {
+            $errors[$fieldKey] = 'validation.opening_hours_order_invalid';
+            return null;
+        }
+
+        return ['open' => $open, 'close' => $close];
+    }
+
+    private function isValidHourFormat(string $value): bool
+    {
+        return (bool) preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value);
+    }
+
+    private function getServiceTranslationKey(string $serviceName): ?string
+    {
+        return match (mb_strtolower(trim($serviceName))) {
+            'self-service 24/7' => 'professional.laundry_form.service_self_service_24_7',
+            'ironing station' => 'professional.laundry_form.service_ironing_station',
+            'laundry folding' => 'professional.laundry_form.service_laundry_folding',
+            default => null,
+        };
+    }
+
+    private function getPaymentMethodTranslationKey(string $paymentMethodName): ?string
+    {
+        return match (mb_strtolower(trim($paymentMethodName))) {
+            'card' => 'professional.laundry_form.payment_card',
+            'cash' => 'professional.laundry_form.payment_cash',
+            'contactless' => 'professional.laundry_form.payment_contactless',
+            default => null,
+        };
     }
 
     private function applyLaundryPayload(
@@ -543,10 +891,75 @@ class ProfessionalController extends AbstractController
         return (int) $value;
     }
 
+    private function extractUploadedFiles(Request $request, array $keys): array
+    {
+        $files = [];
+
+        foreach ($keys as $key) {
+            $value = $request->files->get($key);
+            if ($value instanceof UploadedFile) {
+                $files[] = $value;
+                continue;
+            }
+
+            if (is_array($value)) {
+                $files = [...$files, ...$this->flattenUploadedFiles($value)];
+            }
+        }
+
+        if ($files !== []) {
+            return $files;
+        }
+
+        foreach ($request->files->all() as $value) {
+            if ($value instanceof UploadedFile) {
+                $files[] = $value;
+                continue;
+            }
+
+            if (is_array($value)) {
+                $files = [...$files, ...$this->flattenUploadedFiles($value)];
+            }
+        }
+
+        return $files;
+    }
+
+    private function flattenUploadedFiles(array $values): array
+    {
+        $flattened = [];
+
+        foreach ($values as $value) {
+            if ($value instanceof UploadedFile) {
+                $flattened[] = $value;
+                continue;
+            }
+
+            if (is_array($value)) {
+                $flattened = [...$flattened, ...$this->flattenUploadedFiles($value)];
+            }
+        }
+
+        return $flattened;
+    }
+
     private function formatLaundry(Laundry $laundry): array
     {
         $address = $laundry->getAddress();
         $professional = $laundry->getProfessional();
+        $logo = $laundry->getLogo();
+        $medias = [];
+        foreach ($laundry->getLaundryMedias() as $laundryMedia) {
+            $media = $laundryMedia->getMedia();
+            $medias[] = [
+                'id' => $media->getId(),
+                'location' => $media->getLocation(),
+                'originalName' => $media->getOriginalName(),
+                'mimeType' => $media->getMimeType(),
+                'weight' => $media->getWeight(),
+                'description' => $laundryMedia->getDescription(),
+            ];
+        }
         $closures = $laundry->getLaundryClosures()->toArray();
         usort(
             $closures,
@@ -665,6 +1078,14 @@ class ProfessionalController extends AbstractController
                 'city' => $address?->getCity() ?? '',
                 'country' => $address?->getCountry() ?? '',
             ],
+            'logo' => $logo ? [
+                'id' => $logo->getId(),
+                'location' => $logo->getLocation(),
+                'originalName' => $logo->getOriginalName(),
+                'mimeType' => $logo->getMimeType(),
+                'weight' => $logo->getWeight(),
+            ] : null,
+            'medias' => $medias,
             'createdAt' => $laundry->getCreatedAt()?->format('c') ?? '',
             'updatedAt' => $laundry->getUpdatedAt()?->format('c') ?? '',
             'showPreciseAddress' => $laundry->getWiLineReference() !== null,
