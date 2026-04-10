@@ -4,8 +4,10 @@ namespace App\Controller;
 
 use App\Entity\Admin;
 use App\Entity\ProfessionalInteractionHistory;
+use App\Enum\LaundryStatusEnum;
 use App\Enum\InteractionActionEnum;
 use App\Enum\ProfessionalStatusEnum;
+use App\Repository\LaundryRepository;
 use App\Repository\ProfessionalRepository;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -61,6 +63,80 @@ class AdminController extends AbstractController
                 'validationDate' => $professional->getValidationDate()?->format('c'),
             ];
         }, $professionals);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
+    }
+
+    #[Route('/api/admin/laundries/pending/count', name: 'api_admin_laundries_pending_count', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getPendingLaundriesCount(LaundryRepository $laundryRepository): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        return $this->json([
+            'count' => $laundryRepository->countPendingLaundries(),
+            'status' => LaundryStatusEnum::PENDING->value,
+        ]);
+    }
+
+    #[Route('/api/admin/laundries/pending', name: 'api_admin_laundries_pending', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getPendingLaundries(
+        Request $request,
+        LaundryRepository $laundryRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+
+        $laundries = $laundryRepository->findPendingLaundries($limit, $offset);
+        $total = $laundryRepository->countPendingLaundries();
+
+        $data = array_map(function ($laundry) {
+            $address = $laundry->getAddress();
+            $professional = $laundry->getProfessional();
+            $professionalUser = $professional->getUser();
+
+            return [
+                'id' => $laundry->getId(),
+                'establishmentName' => $laundry->getEstablishmentName(),
+                'status' => $laundry->getStatus()->value,
+                'createdAt' => $laundry->getCreatedAt()->format('c'),
+                'updatedAt' => $laundry->getUpdatedAt()->format('c'),
+                'address' => $address ? [
+                    'id' => $address->getId(),
+                    'street' => $address->getStreet(),
+                    'postalCode' => $address->getPostalCode(),
+                    'city' => $address->getCity(),
+                ] : null,
+                'professional' => [
+                    'id' => $professional->getId(),
+                    'companyName' => $professional->getCompanyName(),
+                    'firstName' => $professionalUser->getFirstName(),
+                    'lastName' => $professionalUser->getLastName(),
+                    'email' => $professionalUser->getEmail(),
+                ],
+            ];
+        }, $laundries);
 
         return $this->json([
             'data' => $data,

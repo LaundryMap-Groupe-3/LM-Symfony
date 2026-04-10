@@ -1,0 +1,380 @@
+<?php
+
+namespace App\DataFixtures;
+
+use App\Entity\Address;
+use App\Entity\Laundry;
+use App\Entity\LaundryClosure;
+use App\Entity\LaundryEquipment;
+use App\Entity\LaundryExceptionalClosure;
+use App\Entity\LaundryFavorite;
+use App\Entity\LaundryMedia;
+use App\Entity\LaundryNote;
+use App\Entity\LaundryNoteReport;
+use App\Entity\LaundryPayment;
+use App\Entity\LaundryService;
+use App\Entity\Media;
+use App\Entity\PaymentMethod;
+use App\Entity\Professional;
+use App\Entity\Service;
+use App\Entity\User;
+use App\Enum\DayOfWeekEnum;
+use App\Enum\GeolocalizationStatusEnum;
+use App\Enum\LaundryEquipmentTypeEnum;
+use App\Enum\LaundryNoteReportReasonEnum;
+use App\Enum\LaundryStatusEnum;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
+use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Persistence\ObjectManager;
+use RuntimeException;
+
+class LaundryFixtures extends Fixture implements DependentFixtureInterface
+{
+    public function load(ObjectManager $manager): void
+    {
+        $now = new \DateTime('2026-04-10 10:00:00');
+
+        $professional1 = $this->findOneOrFail(
+            $manager,
+            Professional::class,
+            ['companyName' => 'Laverie Martin'],
+            'Laverie Martin'
+        );
+
+        $professional2 = $this->findOneOrFail(
+            $manager,
+            Professional::class,
+            ['companyName' => 'Pressing Bernard'],
+            'Pressing Bernard'
+        );
+
+        $user1 = $this->findOneOrFail(
+            $manager,
+            User::class,
+            ['email' => 'marie.dupont@example.com'],
+            'marie.dupont@example.com'
+        );
+
+        $user2 = $this->findOneOrFail(
+            $manager,
+            User::class,
+            ['email' => 'jean.martin@example.com'],
+            'jean.martin@example.com'
+        );
+
+        $laundryAddress1 = $this->createAddress(
+            '12 Rue du Faubourg Saint-Antoine 75012 Paris',
+            '12 Rue du Faubourg Saint-Antoine',
+            75012,
+            'Paris',
+            48.8516,
+            2.3762
+        );
+        $manager->persist($laundryAddress1);
+
+        $laundryAddress2 = $this->createAddress(
+            '101 Boulevard Victor Hugo 59000 Lille',
+            '101 Boulevard Victor Hugo',
+            59000,
+            'Lille',
+            50.6329,
+            3.0586
+        );
+        $manager->persist($laundryAddress2);
+
+        $serviceSelf = $this->findOneOrFail(
+            $manager,
+            Service::class,
+            ['name' => ServiceFixtures::SELF_SERVICE_NAME],
+            ServiceFixtures::SELF_SERVICE_NAME
+        );
+
+        $serviceIron = $this->findOneOrFail(
+            $manager,
+            Service::class,
+            ['name' => ServiceFixtures::IRONING_STATION_NAME],
+            ServiceFixtures::IRONING_STATION_NAME
+        );
+
+        $serviceFolding = $this->findOneOrFail(
+            $manager,
+            Service::class,
+            ['name' => ServiceFixtures::LAUNDRY_FOLDING_NAME],
+            ServiceFixtures::LAUNDRY_FOLDING_NAME
+        );
+
+        $paymentCard = $this->findOneOrFail(
+            $manager,
+            PaymentMethod::class,
+            ['name' => PaymentMethodFixtures::CARD_NAME],
+            PaymentMethodFixtures::CARD_NAME
+        );
+
+        $paymentCash = $this->findOneOrFail(
+            $manager,
+            PaymentMethod::class,
+            ['name' => PaymentMethodFixtures::CASH_NAME],
+            PaymentMethodFixtures::CASH_NAME
+        );
+
+        $paymentContactless = $this->findOneOrFail(
+            $manager,
+            PaymentMethod::class,
+            ['name' => PaymentMethodFixtures::CONTACTLESS_NAME],
+            PaymentMethodFixtures::CONTACTLESS_NAME
+        );
+
+        $logo1 = new Media();
+        $logo1->setLocation('/uploads/laundries/logo-oberkampf.png');
+        $logo1->setOriginalName('logo-oberkampf.png');
+        $logo1->setWeight(156321);
+        $logo1->setMimeType('image/png');
+        $manager->persist($logo1);
+
+        $logo2 = new Media();
+        $logo2->setLocation('/uploads/laundries/logo-lille-clean.png');
+        $logo2->setOriginalName('logo-lille-clean.png');
+        $logo2->setWeight(147810);
+        $logo2->setMimeType('image/png');
+        $manager->persist($logo2);
+
+        $cover1 = new Media();
+        $cover1->setLocation('/uploads/laundries/cover-oberkampf.jpg');
+        $cover1->setOriginalName('cover-oberkampf.jpg');
+        $cover1->setWeight(398450);
+        $cover1->setMimeType('image/jpeg');
+        $manager->persist($cover1);
+
+        $cover2 = new Media();
+        $cover2->setLocation('/uploads/laundries/cover-lille-clean.jpg');
+        $cover2->setOriginalName('cover-lille-clean.jpg');
+        $cover2->setWeight(412900);
+        $cover2->setMimeType('image/jpeg');
+        $manager->persist($cover2);
+
+        $laundry1 = new Laundry();
+        $laundry1->setProfessional($professional1);
+        $laundry1->setStatus(LaundryStatusEnum::APPROVED);
+        $laundry1->setWiLineReference(100001);
+        $laundry1->setAddress($laundryAddress1);
+        $laundry1->setLogo($logo1);
+        $laundry1->setEstablishmentName('Laverie Bastille Express');
+        $laundry1->setContactEmail('contact@bastille-express.test');
+        $laundry1->setDescription('Large laundry with modern washers and dryers.');
+        $laundry1->setCreatedAt(new \DateTime('2026-03-01 08:45:00'));
+        $laundry1->setUpdatedAt(new \DateTime('2026-04-10 09:20:00'));
+        $manager->persist($laundry1);
+
+        $laundry2 = new Laundry();
+        $laundry2->setProfessional($professional2);
+        $laundry2->setStatus(LaundryStatusEnum::APPROVED);
+        $laundry2->setWiLineReference(100002);
+        $laundry2->setAddress($laundryAddress2);
+        $laundry2->setLogo($logo2);
+        $laundry2->setEstablishmentName('Lille Clean Hub');
+        $laundry2->setContactEmail('hello@lille-clean-hub.test');
+        $laundry2->setDescription('Neighborhood laundry with folding area and quick cycles.');
+        $laundry2->setCreatedAt(new \DateTime('2026-03-05 09:15:00'));
+        $laundry2->setUpdatedAt(new \DateTime('2026-04-09 17:05:00'));
+        $manager->persist($laundry2);
+
+        $closure1 = new LaundryClosure();
+        $closure1->setLaundry($laundry1);
+        $closure1->setDay(DayOfWeekEnum::SUNDAY);
+        $closure1->setStartTime(new \DateTime('08:00:00'));
+        $closure1->setEndTime(new \DateTime('12:00:00'));
+        $closure1->setCreatedAt($now);
+        $closure1->setUpdatedAt($now);
+        $manager->persist($closure1);
+
+        $closure2 = new LaundryClosure();
+        $closure2->setLaundry($laundry2);
+        $closure2->setDay(DayOfWeekEnum::MONDAY);
+        $closure2->setStartTime(new \DateTime('07:00:00'));
+        $closure2->setEndTime(new \DateTime('09:00:00'));
+        $closure2->setCreatedAt($now);
+        $closure2->setUpdatedAt($now);
+        $manager->persist($closure2);
+
+        $exceptionalClosure = new LaundryExceptionalClosure();
+        $exceptionalClosure->setLaundry($laundry1);
+        $exceptionalClosure->setStartDate(new \DateTime('2026-08-15 00:00:00'));
+        $exceptionalClosure->setEndDate(new \DateTime('2026-08-16 23:59:59'));
+        $exceptionalClosure->setReason('Maintenance work');
+        $exceptionalClosure->setCreatedAt($now);
+        $manager->persist($exceptionalClosure);
+
+        $equipment1 = new LaundryEquipment();
+        $equipment1->setLaundry($laundry1);
+        $equipment1->setEquipmentReference(2001);
+        $equipment1->setName('Washer XL 14kg');
+        $equipment1->setType(LaundryEquipmentTypeEnum::WASHING_MACHINE);
+        $equipment1->setCapacity(14);
+        $equipment1->setPrice(7.50);
+        $equipment1->setDuration(38);
+        $manager->persist($equipment1);
+
+        $equipment2 = new LaundryEquipment();
+        $equipment2->setLaundry($laundry1);
+        $equipment2->setEquipmentReference(2002);
+        $equipment2->setName('Dryer Turbo 18kg');
+        $equipment2->setType(LaundryEquipmentTypeEnum::DRYER);
+        $equipment2->setCapacity(18);
+        $equipment2->setPrice(4.20);
+        $equipment2->setDuration(20);
+        $manager->persist($equipment2);
+
+        $equipment3 = new LaundryEquipment();
+        $equipment3->setLaundry($laundry2);
+        $equipment3->setEquipmentReference(3001);
+        $equipment3->setName('Washer Eco 8kg');
+        $equipment3->setType(LaundryEquipmentTypeEnum::WASHING_MACHINE);
+        $equipment3->setCapacity(8);
+        $equipment3->setPrice(4.90);
+        $equipment3->setDuration(35);
+        $manager->persist($equipment3);
+
+        $laundryService1 = new LaundryService();
+        $laundryService1->setLaundry($laundry1);
+        $laundryService1->setService($serviceSelf);
+        $manager->persist($laundryService1);
+
+        $laundryService2 = new LaundryService();
+        $laundryService2->setLaundry($laundry1);
+        $laundryService2->setService($serviceIron);
+        $manager->persist($laundryService2);
+
+        $laundryService3 = new LaundryService();
+        $laundryService3->setLaundry($laundry2);
+        $laundryService3->setService($serviceSelf);
+        $manager->persist($laundryService3);
+
+        $laundryService4 = new LaundryService();
+        $laundryService4->setLaundry($laundry2);
+        $laundryService4->setService($serviceFolding);
+        $manager->persist($laundryService4);
+
+        $laundryPayment1 = new LaundryPayment();
+        $laundryPayment1->setLaundry($laundry1);
+        $laundryPayment1->setPaymentMethod($paymentCard);
+        $manager->persist($laundryPayment1);
+
+        $laundryPayment2 = new LaundryPayment();
+        $laundryPayment2->setLaundry($laundry1);
+        $laundryPayment2->setPaymentMethod($paymentContactless);
+        $manager->persist($laundryPayment2);
+
+        $laundryPayment3 = new LaundryPayment();
+        $laundryPayment3->setLaundry($laundry2);
+        $laundryPayment3->setPaymentMethod($paymentCard);
+        $manager->persist($laundryPayment3);
+
+        $laundryPayment4 = new LaundryPayment();
+        $laundryPayment4->setLaundry($laundry2);
+        $laundryPayment4->setPaymentMethod($paymentCash);
+        $manager->persist($laundryPayment4);
+
+        $favorite1 = new LaundryFavorite();
+        $favorite1->setLaundry($laundry1);
+        $favorite1->setUser($user1);
+        $manager->persist($favorite1);
+
+        $favorite2 = new LaundryFavorite();
+        $favorite2->setLaundry($laundry2);
+        $favorite2->setUser($user1);
+        $manager->persist($favorite2);
+
+        $favorite3 = new LaundryFavorite();
+        $favorite3->setLaundry($laundry2);
+        $favorite3->setUser($user2);
+        $manager->persist($favorite3);
+
+        $laundryMedia1 = new LaundryMedia();
+        $laundryMedia1->setLaundry($laundry1);
+        $laundryMedia1->setMedia($cover1);
+        $laundryMedia1->setDescription('Main room view');
+        $manager->persist($laundryMedia1);
+
+        $laundryMedia2 = new LaundryMedia();
+        $laundryMedia2->setLaundry($laundry2);
+        $laundryMedia2->setMedia($cover2);
+        $laundryMedia2->setDescription('Drying area');
+        $manager->persist($laundryMedia2);
+
+        $note1 = new LaundryNote();
+        $note1->setLaundry($laundry1);
+        $note1->setUser($user1);
+        $note1->setRating(5);
+        $note1->setRatedAt(new \DateTime('2026-04-01 20:15:00'));
+        $note1->setComment('Very clean and machines are fast.');
+        $note1->setCommentedAt(new \DateTime('2026-04-01 20:17:00'));
+        $note1->setResponse('Thank you for your feedback.');
+        $note1->setRespondedAt(new \DateTime('2026-04-02 09:00:00'));
+        $manager->persist($note1);
+
+        $note2 = new LaundryNote();
+        $note2->setLaundry($laundry2);
+        $note2->setUser($user2);
+        $note2->setRating(3);
+        $note2->setRatedAt(new \DateTime('2026-04-03 19:05:00'));
+        $note2->setComment('One dryer was out of order.');
+        $note2->setCommentedAt(new \DateTime('2026-04-03 19:08:00'));
+        $manager->persist($note2);
+
+        $noteReport = new LaundryNoteReport();
+        $noteReport->setLaundryNote($note2);
+        $noteReport->setUser($user1);
+        $noteReport->setCreatedAt(new \DateTime('2026-04-04 10:00:00'));
+        $noteReport->setReason(LaundryNoteReportReasonEnum::EQUIPMENT_BROKEN);
+        $noteReport->setComment('Issue confirmed during my visit.');
+        $manager->persist($noteReport);
+
+        $manager->flush();
+    }
+
+    private function createAddress(
+        string $address,
+        string $street,
+        int $postalCode,
+        string $city,
+        float $latitude,
+        float $longitude
+    ): Address {
+        $addressEntity = new Address();
+        $addressEntity->setAddress($address);
+        $addressEntity->setStreet($street);
+        $addressEntity->setPostalCode($postalCode);
+        $addressEntity->setCity($city);
+        $addressEntity->setCountry('France');
+        $addressEntity->setLatitude($latitude);
+        $addressEntity->setLongitude($longitude);
+        $addressEntity->setGeolocalizationStatus(GeolocalizationStatusEnum::VERIFIED);
+
+        return $addressEntity;
+    }
+
+    private function findOneOrFail(
+        ObjectManager $manager,
+        string $entityClass,
+        array $criteria,
+        string $label
+    ): object {
+        $entity = $manager->getRepository($entityClass)->findOneBy($criteria);
+
+        if ($entity === null) {
+            throw new RuntimeException(sprintf('%s not found for LaundryFixtures.', $label));
+        }
+
+        return $entity;
+    }
+
+    public function getDependencies(): array
+    {
+        return [
+            ServiceFixtures::class,
+            PaymentMethodFixtures::class,
+            UserFixtures::class,
+            ProfessionalFixtures::class,
+        ];
+    }
+}
