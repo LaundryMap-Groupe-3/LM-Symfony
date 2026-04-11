@@ -6,6 +6,7 @@ use App\Entity\User;
 use App\Entity\UserPreference;
 use App\Entity\Language;
 use App\Enum\ThemeEnum;
+use App\Security\PasswordPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -57,6 +58,8 @@ class UserController extends AbstractController
                 $errors['firstName'] = 'validation.first_name_empty';
             } elseif (strlen($data['firstName']) < 2) {
                 $errors['firstName'] = 'validation.first_name_required';
+            } elseif (strlen(trim($data['firstName'])) > 50) {
+                $errors['firstName'] = 'validation.name_max_length';
             }
         }
 
@@ -65,6 +68,8 @@ class UserController extends AbstractController
                 $errors['lastName'] = 'validation.last_name_empty';
             } elseif (strlen($data['lastName']) < 2) {
                 $errors['lastName'] = 'validation.last_name_required';
+            } elseif (strlen(trim($data['lastName'])) > 50) {
+                $errors['lastName'] = 'validation.name_max_length';
             }
         }
 
@@ -125,10 +130,9 @@ class UserController extends AbstractController
             }
         }
 
-        if (empty($data['newPassword'])) {
-            $errors['newPassword'] = 'validation.password_required';
-        } elseif (strlen($data['newPassword']) < 8) {
-            $errors['newPassword'] = 'validation.password_too_short';
+        $newPasswordError = PasswordPolicy::getValidationError($data['newPassword'] ?? null);
+        if ($newPasswordError) {
+            $errors['newPassword'] = $newPasswordError;
         }
 
         if (empty($data['confirmPassword'])) {

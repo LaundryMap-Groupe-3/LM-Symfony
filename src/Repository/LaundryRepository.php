@@ -17,8 +17,8 @@ class LaundryRepository extends ServiceEntityRepository
         parent::__construct($registry, Laundry::class);
     }
 
-        /**
-     * Find pending professionals with pagination
+    /**
+     * Find pending laundries with pagination
      */
     public function findPendingLaundries(int $limit = 10, int $offset = 0): array
     {
