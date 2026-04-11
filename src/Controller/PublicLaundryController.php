@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Laundry;
 use App\Enum\LaundryStatusEnum;
 use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
@@ -46,8 +47,12 @@ class PublicLaundryController extends AbstractController
             ->createQueryBuilder('l')
             ->leftJoin('l.address', 'a')
             ->leftJoin('l.logo', 'logo')
+            ->leftJoin('l.laundryClosures', 'closures')
+            ->leftJoin('l.laundryExceptionalClosures', 'exceptionalClosures')
             ->addSelect('logo')
             ->addSelect('a')
+            ->addSelect('closures')
+            ->addSelect('exceptionalClosures')
             ->where('l.status = :status')
             ->andWhere('l.deletedAt IS NULL')
             ->andWhere('a.latitude IS NOT NULL')
@@ -94,15 +99,16 @@ class PublicLaundryController extends AbstractController
                 }
             }
 
-                $averageNote = null;
-                $reviewCount = 0;
-                $stats = $laundryNoteRepository->getAverageRatingAndCountByLaundryIds([(int) $laundry->getId()]);
-                if ($stats && $stats['avg_rating'] !== null) {
-                    $averageNote = round((float) $stats['avg_rating'], 2);
-                    $reviewCount = (int) $stats['review_count'];
-                }
+            $averageNote = null;
+            $reviewCount = 0;
+            $stats = $laundryNoteRepository->getAverageRatingAndCountByLaundryIds([(int) $laundry->getId()]);
+            if ($stats && $stats['avg_rating'] !== null) {
+                $averageNote = round((float) $stats['avg_rating'], 2);
+                $reviewCount = (int) $stats['review_count'];
+            }
 
-                $logo = $laundry->getLogo();
+            $logo = $laundry->getLogo();
+            $isOpenNow = $this->isLaundryOpenNow($laundry);
 
             $results[] = [
                 'id' => $laundry->getId(),
@@ -119,6 +125,7 @@ class PublicLaundryController extends AbstractController
                 'reviewCount' => $reviewCount,
                 'featured' => false,
                 'services' => [],
+                'isOpenNow' => $isOpenNow,
                 'openingHours' => null,
                 'imageUrl' => $logo?->getLocation(),
             ];
@@ -163,5 +170,48 @@ class PublicLaundryController extends AbstractController
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
 
         return $earthRadiusKm * $c;
+    }
+
+    private function isLaundryOpenNow(Laundry $laundry): bool
+    {
+        $now = new \DateTimeImmutable();
+
+        foreach ($laundry->getLaundryExceptionalClosures() as $exceptionalClosure) {
+            if ($now >= $exceptionalClosure->getStartDate() && $now <= $exceptionalClosure->getEndDate()) {
+                return false;
+            }
+        }
+
+        $currentDay = strtolower($now->format('l'));
+        $currentMinutes = ((int) $now->format('H')) * 60 + (int) $now->format('i');
+        $hasScheduleToday = false;
+
+        foreach ($laundry->getLaundryClosures() as $closure) {
+            if ($closure->getDay()->value !== $currentDay) {
+                continue;
+            }
+
+            $hasScheduleToday = true;
+            $start = ((int) $closure->getStartTime()->format('H')) * 60 + (int) $closure->getStartTime()->format('i');
+            $end = ((int) $closure->getEndTime()->format('H')) * 60 + (int) $closure->getEndTime()->format('i');
+
+            if ($start <= $end) {
+                if ($currentMinutes >= $start && $currentMinutes <= $end) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ($currentMinutes >= $start || $currentMinutes <= $end) {
+                return true;
+            }
+        }
+
+        if ($hasScheduleToday) {
+            return false;
+        }
+
+        return true;
     }
 }
