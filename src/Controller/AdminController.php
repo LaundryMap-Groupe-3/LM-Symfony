@@ -12,11 +12,36 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class AdminController extends AbstractController
 {
+    #[Route('/api/admin/professionals/pending/count', name: 'api_admin_professionals_pending_count', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getPendingProfessionalsCount(
+        ProfessionalRepository $professionalRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        try {
+            $total = $professionalRepository->countPendingProfessionals();
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'errors.fetch_error'], 500);
+        }
+
+        return $this->json([
+            'total' => $total,
+            'response' => Response::HTTP_OK,
+        ]);
+    }
+
     #[Route('/api/admin/professionals/pending', name: 'api_admin_professionals_pending', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getPendingProfessionals(
