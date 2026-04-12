@@ -23,6 +23,8 @@ class LaundryRepository extends ServiceEntityRepository
     public function findPendingLaundries(int $limit = 10, int $offset = 0): array
     {
         return $this->createQueryBuilder('l')
+            ->leftJoin('l.address', "addr")
+            ->leftJoin("l.professional", "pro")
             ->where('l.status = :status')
             ->setParameter('status', LaundryStatusEnum::PENDING)
             ->orderBy('l.establishmentName', 'ASC')

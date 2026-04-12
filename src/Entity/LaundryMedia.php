@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\LaundryMediaRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: LaundryMediaRepository::class)]
 class LaundryMedia
@@ -16,9 +17,11 @@ class LaundryMedia
     #[ORM\Id]
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['laundry:read'])]
     private Media $media;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read'])]
     private ?string $description = null;
 
     public function getLaundry(): Laundry

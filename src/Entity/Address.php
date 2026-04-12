@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Enum\GeolocalizationStatusEnum;
 use App\Repository\AddressRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: AddressRepository::class)]
 class Address
@@ -15,27 +16,35 @@ class Address
     private int $id;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read'])]
     private string $address;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read'])]
     private string $street;
 
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $postalCode;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read'])]
     private string $city;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read'])]
     private string $country;
 
     #[ORM\Column(type: 'float', nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?float $latitude = null;
 
     #[ORM\Column(type: 'float', nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?float $longitude = null;
 
     #[ORM\Column(type: 'string', enumType: GeolocalizationStatusEnum::class)]
+    #[Groups(['laundry:read'])]
     private GeolocalizationStatusEnum $geolocalizationStatus;
 
     public function getId(): int

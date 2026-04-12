@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\LaundryServiceRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: LaundryServiceRepository::class)]
 class LaundryService
@@ -11,6 +12,7 @@ class LaundryService
     #[ORM\Id]
     #[ORM\ManyToOne(inversedBy: 'laundryServices')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['laundry:read'])]
     private ?Service $service = null;
 
     #[ORM\Id]
