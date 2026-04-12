@@ -19,6 +19,22 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class AdminController extends AbstractController
 {
+
+    #[Route('/api/admin/profile', name: 'api_admin_profile_get', methods: ['GET'])]
+    public function getProfile(): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user || !$user instanceof Admin) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        return $this->json([
+            'id' => $user->getId(),
+            'email' => $user->getEmail(),
+        ]);
+    }
+
     #[Route('/api/admin/professionals/pending', name: 'api_admin_professionals_pending', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getPendingProfessionals(
