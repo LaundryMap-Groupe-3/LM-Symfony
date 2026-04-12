@@ -333,7 +333,7 @@ class AdminController extends AbstractController
         return $this->json(['message' => 'Professional rejected and account deleted successfully']);
     }
 
-    #[Route('/api/admin/laudries/{id}', name: 'api_admin_laundries_details', methods: ['GET'])]
+    #[Route('/api/admin/laundries/{id}', name: 'api_admin_laundries_details', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getLaundryDetails(
         int $id,
@@ -349,15 +349,83 @@ class AdminController extends AbstractController
         $laundry = $laundryRepository->find($id);
 
         if (!$laundry) {
-            return $this->json(['error' => 'Professional not found'], 404);
+            return $this->json(['error' => 'Laundry not found'], 404);
         }
 
-        $data = $this->serializer->serialize($$laundry, 'json', ['groups' => ['laundry:read']]);
+        $address = $laundry->getAddress();
+        $professional = $laundry->getProfessional();
+        $professionalUser = $professional->getUser();
+
+        $latestRejectionReason = null;
+        $latestRejectionAt = null;
+        foreach ($laundry->getLaundryInteractionHistories() as $interaction) {
+            if ($interaction->getAction() !== InteractionActionEnum::REJECT) {
+                continue;
+            }
+
+            if ($latestRejectionAt === null || $interaction->getCreatedAt() > $latestRejectionAt) {
+                $latestRejectionAt = $interaction->getCreatedAt();
+                $latestRejectionReason = $interaction->getActionReason();
+            }
+        }
+
+        $data = [
+            'id' => $laundry->getId(),
+            'establishmentName' => $laundry->getEstablishmentName(),
+            'status' => $laundry->getStatus()->value,
+            'contactEmail' => $laundry->getContactEmail(),
+            'description' => $laundry->getDescription(),
+            'createdAt' => $laundry->getCreatedAt()->format('c'),
+            'updatedAt' => $laundry->getUpdatedAt()->format('c'),
+            'logo' => $laundry->getLogo() ? [
+                'id' => $laundry->getLogo()->getId(),
+                'location' => $laundry->getLogo()->getLocation(),
+                'originalName' => $laundry->getLogo()->getOriginalName(),
+                'mimeType' => $laundry->getLogo()->getMimeType(),
+            ] : null,
+            'medias' => array_map(static fn ($laundryMedia) => [
+                'id' => $laundryMedia->getMedia()->getId(),
+                'location' => $laundryMedia->getMedia()->getLocation(),
+                'originalName' => $laundryMedia->getMedia()->getOriginalName(),
+                'mimeType' => $laundryMedia->getMedia()->getMimeType(),
+                'description' => $laundryMedia->getDescription(),
+            ], $laundry->getLaundryMedias()->toArray()),
+            'openingHours' => array_map(static fn ($closure) => [
+                'day' => $closure->getDay()->value,
+                'startTime' => $closure->getStartTime()->format('H:i'),
+                'endTime' => $closure->getEndTime()->format('H:i'),
+            ], $laundry->getLaundryClosures()->toArray()),
+            'exceptionalClosures' => array_map(static fn ($closure) => [
+                'startDate' => $closure->getStartDate()->format('c'),
+                'endDate' => $closure->getEndDate()->format('c'),
+                'reason' => $closure->getReason(),
+            ], $laundry->getLaundryExceptionalClosures()->toArray()),
+            'address' => $address ? [
+                'id' => $address->getId(),
+                'street' => $address->getStreet(),
+                'postalCode' => $address->getPostalCode(),
+                'city' => $address->getCity(),
+                'country' => $address->getCountry(),
+            ] : null,
+            'professional' => [
+                'id' => $professional->getId(),
+                'companyName' => $professional->getCompanyName(),
+                'siret' => $professional->getSiret(),
+                'phone' => $professional->getPhone(),
+                'user' => [
+                    'id' => $professionalUser->getId(),
+                    'firstName' => $professionalUser->getFirstName(),
+                    'lastName' => $professionalUser->getLastName(),
+                    'email' => $professionalUser->getEmail(),
+                ],
+            ],
+            'rejectionReason' => $latestRejectionReason,
+        ];
 
         return $this->json(['data' => $data]);
     }
 
-    #[Route('/api/admin/laudries/{id}/approve', name: 'api_admin_laundries_approve', methods: ['POST'])]
+    #[Route('/api/admin/laundries/{id}/approve', name: 'api_admin_laundries_approve', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
     public function approveLaundry(
         int $id,
@@ -375,12 +443,10 @@ class AdminController extends AbstractController
         $laundry = $laundryRepository->find($id);
 
         if (!$laundry) {
-            return $this->json(['error' => 'Professional not found'], 404);
+            return $this->json(['error' => 'Laundry not found'], 404);
         }
 
-        $laundry->setStatus(ProfessionalStatusEnum::APPROVED);
-        $laundry->setValidationDate(new \DateTime());
-        $laundry->setRejectionReason(null);
+        $laundry->setStatus(LaundryStatusEnum::APPROVED);
 
         // Enregistrer l'action dans LaundryInteractionHistory
         $interaction = new LaundryInteractionHistory();
@@ -394,12 +460,12 @@ class AdminController extends AbstractController
         $em->flush();
 
         // Envoyer l'email de validation après la confirmation en base
-        $emailService->sendProfessionalApprovalEmail($laundry);
+        $emailService->sendLaundryApprovalEmail($laundry);
 
         return $this->json(['message' => 'laundry approved successfully']);
     }
 
-    #[Route('/api/admin/laudries/{id}/reject', name: 'api_admin_laudries_reject', methods: ['POST'])]
+    #[Route('/api/admin/laundries/{id}/reject', name: 'api_admin_laundries_reject', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
     public function rejectLaundry(
         int $id,
@@ -438,7 +504,7 @@ class AdminController extends AbstractController
         $interaction->setAdmin($user);
         $interaction->setLaundry($laundry);
         $interaction->setAction(InteractionActionEnum::REJECT);
-        $interaction->setActionReason('Laundry rejected by admin');
+        $interaction->setActionReason($reason);
         $interaction->setCreatedAt(new \DateTime());
         $em->persist($interaction);
         $em->flush();
