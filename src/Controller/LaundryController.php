@@ -17,6 +17,7 @@ class LaundryController extends AbstractController
     public function __construct(
         private SerializerInterface $serializer
     ) {}
+    
     #[Route('/api/admin/laundry/prending', name: 'api_admin_laundry_pending', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getPendingProfessionals(
