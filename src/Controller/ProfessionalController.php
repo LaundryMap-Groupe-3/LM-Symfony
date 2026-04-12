@@ -368,7 +368,11 @@ class ProfessionalController extends AbstractController
             return $this->json(['errors' => $errors], 400);
         }
 
+        $wasRejected = $laundry->getStatus() === LaundryStatusEnum::REJECTED;
         $this->applyLaundryPayload($payload, $laundry, $professional, $entityManager);
+        if ($wasRejected) {
+            $laundry->setStatus(LaundryStatusEnum::PENDING);
+        }
         $entityManager->flush();
 
         return $this->json($this->formatLaundry($laundry));

@@ -7,6 +7,7 @@ use App\Repository\LaundryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: LaundryRepository::class)]
 class Laundry
@@ -14,69 +15,91 @@ class Laundry
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundries')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['laundry:read'])]
     private Professional $professional;
 
     #[ORM\Column(type: 'string', enumType: LaundryStatusEnum::class)]
+    #[Groups(['laundry:read'])]
     private LaundryStatusEnum $status;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['laundry:read'])]
+
     private ?int $wiLineReference = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['laundry:read'])]
     private Address $address;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?Media $logo = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read'])]
     private string $establishmentName;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?string $contactEmail = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?string $description = null;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $createdAt;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $updatedAt;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?\DateTimeInterface $deletedAt = null;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryFavorite::class)]
+    #[Groups(['laundry:read'])]
     private Collection $laundryFavorites;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryEquipment::class)]
+    #[Groups(['laundry:read'])]
     private Collection $laundryEquipments;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryMedia::class)]
+    #[Groups(['laundry:read'])]
     private Collection $laundryMedias;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryNote::class)]
+    #[Groups(['laundry:read'])]
     private Collection $laundryNotes;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryService::class)]
+     #[Groups(['laundry:read'])]
     private Collection $laundryServices;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryClosure::class)]
+    #[Groups(['laundry:read'])]
     private Collection $laundryClosures;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryExceptionalClosure::class)]
+    #[Groups(['laundry:read'])]
     private Collection $laundryExceptionalClosures;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryInteractionHistory::class)]
+    #[Groups(['laundry:read'])]
     private Collection $laundryInteractionHistories;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryPayment::class)]
+    #[Groups(['laundry:read'])]
     private Collection $laundryPayments;
 
     public function __construct()

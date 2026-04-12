@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Enum\DayOfWeekEnum;
 use App\Repository\LaundryClosureRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: LaundryClosureRepository::class)]
 class LaundryClosure
@@ -12,6 +13,7 @@ class LaundryClosure
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundryClosures')]
@@ -19,18 +21,23 @@ class LaundryClosure
     private Laundry $laundry;
 
     #[ORM\Column(type: 'string', enumType: DayOfWeekEnum::class)]
+    #[Groups(['laundry:read'])]
     private DayOfWeekEnum $day;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $createdAt;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $updatedAt;
 
     #[ORM\Column(type: 'time')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $startTime;
 
     #[ORM\Column(type: 'time')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $endTime;
 
     public function getId(): int

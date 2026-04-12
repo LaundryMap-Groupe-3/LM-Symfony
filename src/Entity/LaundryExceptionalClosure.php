@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\LaundryExceptionalClosureRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: LaundryExceptionalClosureRepository::class)]
 class LaundryExceptionalClosure
@@ -11,6 +12,7 @@ class LaundryExceptionalClosure
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundryExceptionalClosures')]
@@ -18,15 +20,19 @@ class LaundryExceptionalClosure
     private Laundry $laundry;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $startDate;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $endDate;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?string $reason = null;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $createdAt;
 
     public function getId(): int
