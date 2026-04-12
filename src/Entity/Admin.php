@@ -32,6 +32,23 @@ class Admin implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'admin', targetEntity: LaundryInteractionHistory::class)]
     private Collection $laundryInteractionHistories;
 
+    #[ORM\OneToOne(mappedBy: 'admin', cascade: ['persist', 'remove'])]
+    private ?AdminPreference $adminPreference = null;
+
+    public function getAdminPreference(): ?AdminPreference
+    {
+        return $this->adminPreference;
+    }
+
+    public function setAdminPreference(?AdminPreference $adminPreference): static
+    {
+        if ($adminPreference !== null && $adminPreference->getAdmin() !== $this) {
+            $adminPreference->setAdmin($this);
+        }
+        $this->adminPreference = $adminPreference;
+        return $this;
+    }
+
     public function __construct()
     {
         $this->userInteractionHistories = new ArrayCollection();
