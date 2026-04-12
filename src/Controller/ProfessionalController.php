@@ -18,6 +18,7 @@ use App\Enum\DayOfWeekEnum;
 use App\Enum\GeolocalizationStatusEnum;
 use App\Enum\LaundryEquipmentTypeEnum;
 use App\Enum\LaundryStatusEnum;
+use App\Service\WiLineService;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\LaundryNoteRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -238,6 +239,47 @@ class ProfessionalController extends AbstractController
         ]);
     }
 
+    #[Route('/api/professional/wiline/clients/{clientCode}/machines', name: 'api_professional_wiline_client_machines', methods: ['GET'])]
+    public function getWiLineMachinesByClientCode(
+        int $clientCode,
+        EntityManagerInterface $entityManager,
+        WiLineService $wiLineService
+    ): JsonResponse {
+        $professional = $this->getCurrentProfessional($entityManager);
+        if ($professional === null) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        $wiLineResponse = $wiLineService->fetchCentraleDetailsByClientCode($clientCode);
+        if (($wiLineResponse['success'] ?? false) !== true) {
+            $error = (string) ($wiLineResponse['error'] ?? 'errors.wiline_fetch_failed');
+            $statusCode = (int) ($wiLineResponse['statusCode'] ?? 502);
+            if ($statusCode < 400 || $statusCode > 599) {
+                $statusCode = 502;
+            }
+
+            return $this->json([
+                'error' => $error,
+                'details' => $wiLineResponse['details'] ?? null,
+            ], $statusCode);
+        }
+
+        $centrale = is_array($wiLineResponse['centrale'] ?? null) ? $wiLineResponse['centrale'] : [];
+        $machines = is_array($centrale['machines'] ?? null) ? $centrale['machines'] : [];
+        $machineFields = $this->buildMachineFieldsFromWiLine($machines);
+
+        return $this->json([
+            'clientCode' => $clientCode,
+            'laundry' => [
+                'id' => $centrale['id'] ?? null,
+                'name' => $centrale['name'] ?? null,
+                'serial' => $centrale['serial'] ?? null,
+            ],
+            'machines' => $machines,
+            'autoFill' => $machineFields,
+        ]);
+    }
+
     #[Route('/api/professional/laundries', name: 'api_professional_laundry_create', methods: ['POST'])]
     public function createLaundry(Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
@@ -453,6 +495,14 @@ class ProfessionalController extends AbstractController
             $phone = trim((string) $payload['contactPhone']);
             if ($phone !== '' && !preg_match('/^[0-9+\s().-]{10,20}$/', $phone)) {
                 $errors['contactPhone'] = 'validation.phone_invalid';
+            }
+        }
+
+        $showPreciseAddress = filter_var($payload['showPreciseAddress'] ?? false, FILTER_VALIDATE_BOOL);
+        if ($showPreciseAddress) {
+            $wiLineReference = trim((string) ($payload['wiLineReference'] ?? ''));
+            if ($wiLineReference === '' || !preg_match('/^\d+$/', $wiLineReference)) {
+                $errors['wiLineReference'] = 'validation.wiline_client_code_invalid';
             }
         }
 
@@ -889,6 +939,101 @@ class ProfessionalController extends AbstractController
         }
 
         return (int) $value;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $machines
+     * @return array<string, int|float|null>
+     */
+    private function buildMachineFieldsFromWiLine(array $machines): array
+    {
+        $machineCounts = [
+            'washingMachines6kg' => 0,
+            'washingMachines8kg' => 0,
+            'washingMachines10kg' => 0,
+            'washingMachines12kgPlus' => 0,
+            'dryers6kg' => 0,
+            'dryers8kg' => 0,
+            'dryers10kg' => 0,
+            'dryers12kgPlus' => 0,
+        ];
+
+        $prices = [
+            'washingPrice6kg' => null,
+            'washingPrice8kg' => null,
+            'washingPrice10kg' => null,
+            'washingPrice12kgPlus' => null,
+            'dryingPrice6kg' => null,
+            'dryingPrice8kg' => null,
+            'dryingPrice10kg' => null,
+            'dryingPrice12kgPlus' => null,
+        ];
+
+        foreach ($machines as $machine) {
+            if (!is_array($machine)) {
+                continue;
+            }
+
+            $categoryText = strtoupper(trim((string) ($machine['category_text'] ?? '')));
+            $category = (int) ($machine['category'] ?? 0);
+            $isWashingMachine = $categoryText === 'WASH' || $category === 1;
+            $isDryer = $categoryText === 'DRY' || $category === 2;
+
+            if (!$isWashingMachine && !$isDryer) {
+                continue;
+            }
+
+            $capacity = $this->extractWiLineCapacity((string) ($machine['type_name'] ?? ''), (string) ($machine['name'] ?? ''));
+            if ($capacity === null) {
+                continue;
+            }
+
+            $capacityKey = $capacity >= 12 ? '12kgPlus' : sprintf('%dkg', $capacity);
+
+            if ($isWashingMachine) {
+                $countField = sprintf('washingMachines%s', $capacityKey);
+                $priceField = sprintf('washingPrice%s', $capacityKey);
+            } else {
+                $countField = sprintf('dryers%s', $capacityKey);
+                $priceField = sprintf('dryingPrice%s', $capacityKey);
+            }
+
+            if (!array_key_exists($countField, $machineCounts)) {
+                continue;
+            }
+
+            $machineCounts[$countField]++;
+
+            if ($prices[$priceField] === null) {
+                $priceInCents = $machine['price'] ?? null;
+                if (is_numeric($priceInCents)) {
+                    $prices[$priceField] = round(((float) $priceInCents) / 100, 2);
+                }
+            }
+        }
+
+        return [
+            ...$machineCounts,
+            ...$prices,
+        ];
+    }
+
+    private function extractWiLineCapacity(string $typeName, string $fallbackName): ?int
+    {
+        foreach ([$typeName, $fallbackName] as $source) {
+            if ($source === '') {
+                continue;
+            }
+
+            if (preg_match('/(\d+)\s*kg/i', $source, $matches) === 1) {
+                $capacity = (int) ($matches[1] ?? 0);
+                if ($capacity > 0) {
+                    return $capacity;
+                }
+            }
+        }
+
+        return null;
     }
 
     private function extractUploadedFiles(Request $request, array $keys): array
