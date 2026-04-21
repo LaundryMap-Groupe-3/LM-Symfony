@@ -8,7 +8,7 @@ use App\Entity\LaundryFavorite;
 use App\Entity\User;
 use App\Repository\LaundryFavoriteRepository;
 use App\Repository\LaundryRepository;
-use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,7 +21,7 @@ class LaundryController extends AbstractController
     public function __construct(
         private SerializerInterface $serializer,
         private LaundryRepository $laundryRepository,
-        private EntityManager $entityManager,
+        private EntityManagerInterface $entityManager,
         private LaundryFavoriteRepository $favoriteLaundryRepository,
     ) {}
     
