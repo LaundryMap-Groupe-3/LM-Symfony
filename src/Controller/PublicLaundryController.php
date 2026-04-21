@@ -42,6 +42,27 @@ class PublicLaundryController extends AbstractController
 
         $city = trim((string) $request->query->get('city', ''));
         $query = trim((string) $request->query->get('query', ''));
+        $serviceFilters = $this->parseCsvFilter((string) $request->query->get('services', ''));
+        $paymentFilters = $this->parseCsvFilter((string) $request->query->get('payments', ''));
+
+        $openAtRaw = trim((string) $request->query->get('openAt', ''));
+        $closeAtRaw = trim((string) $request->query->get('closeAt', ''));
+
+        if (($openAtRaw !== '' xor $closeAtRaw !== '')) {
+            return $this->json(['error' => 'openAt_and_closeAt_required_together'], 400);
+        }
+
+        $openAtMinutes = null;
+        $closeAtMinutes = null;
+
+        if ($openAtRaw !== '' && $closeAtRaw !== '') {
+            if (!$this->isValidTimeHHMM($openAtRaw) || !$this->isValidTimeHHMM($closeAtRaw)) {
+                return $this->json(['error' => 'invalid_time_range'], 400);
+            }
+
+            $openAtMinutes = $this->timeStringToMinutes($openAtRaw);
+            $closeAtMinutes = $this->timeStringToMinutes($closeAtRaw);
+        }
 
         $laundries = $laundryRepository
             ->createQueryBuilder('l')
@@ -49,10 +70,18 @@ class PublicLaundryController extends AbstractController
             ->leftJoin('l.logo', 'logo')
             ->leftJoin('l.laundryClosures', 'closures')
             ->leftJoin('l.laundryExceptionalClosures', 'exceptionalClosures')
+            ->leftJoin('l.laundryServices', 'laundryServices')
+            ->leftJoin('laundryServices.service', 'service')
+            ->leftJoin('l.laundryPayments', 'laundryPayments')
+            ->leftJoin('laundryPayments.paymentMethod', 'paymentMethod')
             ->addSelect('logo')
             ->addSelect('a')
             ->addSelect('closures')
             ->addSelect('exceptionalClosures')
+            ->addSelect('laundryServices')
+            ->addSelect('service')
+            ->addSelect('laundryPayments')
+            ->addSelect('paymentMethod')
             ->where('l.status = :status')
             ->andWhere('l.deletedAt IS NULL')
             ->andWhere('a.latitude IS NOT NULL')
@@ -72,17 +101,44 @@ class PublicLaundryController extends AbstractController
             $laundryCity = (string) ($address->getCity() ?? '');
             $laundryAddress = (string) ($address->getAddress() ?? '');
             $laundryName = (string) ($laundry->getEstablishmentName() ?? '');
-            $laundryCountry = (string) ($address->getCountry() ?? '');
 
             if ($city !== '' && mb_strtolower($laundryCity) !== mb_strtolower($city)) {
                 continue;
             }
 
             if ($query !== '') {
-                $haystack = mb_strtolower(trim($laundryName . ' ' . $laundryAddress . ' ' . $laundryCity . ' ' . $laundryCountry));
+                $haystack = mb_strtolower(trim($laundryName . ' ' . $laundryAddress . ' ' . $laundryCity));
                 if (!str_contains($haystack, mb_strtolower($query))) {
                     continue;
                 }
+            }
+
+            $services = [];
+            foreach ($laundry->getLaundryServices() as $laundryService) {
+                $serviceName = (string) ($laundryService->getService()?->getName() ?? '');
+                if ($serviceName !== '') {
+                    $services[] = $serviceName;
+                }
+            }
+
+            if (!$this->matchesAllFilters($serviceFilters, $services)) {
+                continue;
+            }
+
+            $payments = [];
+            foreach ($laundry->getLaundryPayments() as $laundryPayment) {
+                $paymentName = (string) ($laundryPayment->getPaymentMethod()?->getName() ?? '');
+                if ($paymentName !== '') {
+                    $payments[] = $paymentName;
+                }
+            }
+
+            if (!$this->matchesAllFilters($paymentFilters, $payments)) {
+                continue;
+            }
+
+            if ($openAtMinutes !== null && $closeAtMinutes !== null && !$this->isLaundryOpenBetween($laundry, $openAtMinutes, $closeAtMinutes)) {
+                continue;
             }
 
             $distanceKm = null;
@@ -117,14 +173,15 @@ class PublicLaundryController extends AbstractController
                 'address' => $laundryAddress,
                 'postalCode' => (string) ($address->getPostalCode() ?? ''),
                 'city' => $laundryCity,
-                'country' => $laundryCountry,
+                'country' => (string) ($address->getCountry() ?? ''),
                 'latitude' => $address->getLatitude(),
                 'longitude' => $address->getLongitude(),
                 'distanceKm' => $distanceKm,
                 'rating' => $averageNote,
                 'reviewCount' => $reviewCount,
                 'featured' => false,
-                'services' => [],
+                'services' => $services,
+                'paymentMethods' => $payments,
                 'isOpenNow' => $isOpenNow,
                 'openingHours' => null,
                 'imageUrl' => $logo?->getLocation(),
@@ -153,8 +210,118 @@ class PublicLaundryController extends AbstractController
                 'hasPosition' => $hasPosition,
                 'radiusKm' => $radiusKm,
                 'limit' => $limit,
+                'serviceFilters' => $serviceFilters,
+                'paymentFilters' => $paymentFilters,
+                'openAt' => $openAtRaw !== '' ? $openAtRaw : null,
+                'closeAt' => $closeAtRaw !== '' ? $closeAtRaw : null,
             ],
         ]);
+    }
+
+    private function parseCsvFilter(string $raw): array
+    {
+        if ($raw === '') {
+            return [];
+        }
+
+        $items = array_filter(array_map('trim', explode(',', $raw)), static fn (string $value): bool => $value !== '');
+
+        return array_values(array_unique(array_map([$this, 'normalizeFilterToken'], $items)));
+    }
+
+    private function matchesAllFilters(array $requestedFilters, array $values): bool
+    {
+        if ($requestedFilters === []) {
+            return true;
+        }
+
+        $normalizedValues = array_values(array_unique(array_map([$this, 'normalizeFilterToken'], $values)));
+
+        foreach ($requestedFilters as $filter) {
+            if (!in_array($filter, $normalizedValues, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function normalizeFilterToken(string $value): string
+    {
+        $normalized = mb_strtolower(trim($value));
+        $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $normalized);
+        if (is_string($transliterated) && $transliterated !== '') {
+            $normalized = $transliterated;
+        }
+
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
+        $normalized = trim($normalized, '-');
+
+        return match ($normalized) {
+            'cb' => 'card',
+            'especes' => 'cash',
+            'app' => 'contactless',
+            default => $normalized,
+        };
+    }
+
+    private function isValidTimeHHMM(string $value): bool
+    {
+        return preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $value) === 1;
+    }
+
+    private function timeStringToMinutes(string $value): int
+    {
+        [$hours, $minutes] = explode(':', $value);
+
+        return ((int) $hours) * 60 + (int) $minutes;
+    }
+
+    private function isLaundryOpenBetween(Laundry $laundry, int $openAtMinutes, int $closeAtMinutes): bool
+    {
+        $now = new \DateTimeImmutable();
+
+        foreach ($laundry->getLaundryExceptionalClosures() as $exceptionalClosure) {
+            if ($now >= $exceptionalClosure->getStartDate() && $now <= $exceptionalClosure->getEndDate()) {
+                return false;
+            }
+        }
+
+        $currentDay = strtolower($now->format('l'));
+        $matchingSlots = [];
+
+        foreach ($laundry->getLaundryClosures() as $closure) {
+            if ($closure->getDay()->value !== $currentDay) {
+                continue;
+            }
+
+            $start = ((int) $closure->getStartTime()->format('H')) * 60 + (int) $closure->getStartTime()->format('i');
+            $end = ((int) $closure->getEndTime()->format('H')) * 60 + (int) $closure->getEndTime()->format('i');
+            $matchingSlots[] = [$start, $end];
+        }
+
+        if ($matchingSlots === []) {
+            return true;
+        }
+
+        if ($openAtMinutes > $closeAtMinutes) {
+            return false;
+        }
+
+        foreach ($matchingSlots as [$slotStart, $slotEnd]) {
+            if ($slotStart <= $slotEnd) {
+                if ($openAtMinutes >= $slotStart && $closeAtMinutes <= $slotEnd) {
+                    return true;
+                }
+                continue;
+            }
+
+            if ($openAtMinutes >= $slotStart || $closeAtMinutes <= $slotEnd) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function distanceInKm(float $lat1, float $lng1, float $lat2, float $lng2): float
