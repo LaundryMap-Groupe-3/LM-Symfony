@@ -26,9 +26,14 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class ProfessionalController extends AbstractController
 {
+    public function __construct(private readonly HttpClientInterface $httpClient)
+    {
+    }
+
     #[Route('/api/professional/laundries/{id}/logo', name: 'api_professional_laundry_logo_upload', methods: ['POST'])]
     public function uploadLaundryLogo(int $id, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
@@ -312,7 +317,7 @@ class ProfessionalController extends AbstractController
         $address->setGeolocalizationStatus(GeolocalizationStatusEnum::PENDING);
         $laundry->setAddress($address);
 
-        $this->applyLaundryPayload($payload, $laundry, $professional, $entityManager);
+        $this->applyLaundryPayload($payload, $laundry, $professional, $entityManager, true);
 
         $entityManager->persist($address);
         $entityManager->persist($laundry);
@@ -369,7 +374,7 @@ class ProfessionalController extends AbstractController
         }
 
         $wasRejected = $laundry->getStatus() === LaundryStatusEnum::REJECTED;
-        $this->applyLaundryPayload($payload, $laundry, $professional, $entityManager);
+        $this->applyLaundryPayload($payload, $laundry, $professional, $entityManager, true);
         if ($wasRejected) {
             $laundry->setStatus(LaundryStatusEnum::PENDING);
         }
@@ -672,7 +677,8 @@ class ProfessionalController extends AbstractController
         array $payload,
         Laundry $laundry,
         Professional $professional,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        bool $resolveGeolocation = false
     ): void {
         if (array_key_exists('establishmentName', $payload)) {
             $laundry->setEstablishmentName(trim((string) $payload['establishmentName']));
@@ -720,13 +726,29 @@ class ProfessionalController extends AbstractController
             $addressLine = trim(sprintf('%s %s %s', $address->getStreet(), (string) $address->getPostalCode(), $address->getCity()));
             $address->setAddress($addressLine);
 
-            if (!isset($payload['address']['latitude'])) {
-                $address->setLatitude(null);
+            if ($resolveGeolocation) {
+                $coordinates = $this->resolveAddressCoordinates($address);
+                if ($coordinates !== null) {
+                    $address->setLatitude($coordinates['latitude']);
+                    $address->setLongitude($coordinates['longitude']);
+                    $address->setGeolocalizationStatus(GeolocalizationStatusEnum::VERIFIED);
+                } else {
+                    $address->setLatitude(null);
+                    $address->setLongitude(null);
+                    $address->setGeolocalizationStatus(GeolocalizationStatusEnum::PENDING);
+                }
+            } else {
+                if (!isset($payload['address']['latitude'])) {
+                    $address->setLatitude(null);
+                }
+                if (!isset($payload['address']['longitude'])) {
+                    $address->setLongitude(null);
+                }
             }
-            if (!isset($payload['address']['longitude'])) {
-                $address->setLongitude(null);
+
+            if (!$resolveGeolocation) {
+                $address->setGeolocalizationStatus(GeolocalizationStatusEnum::PENDING);
             }
-            $address->setGeolocalizationStatus(GeolocalizationStatusEnum::PENDING);
         }
 
         $this->syncLaundryServices($laundry, $payload['serviceIds'] ?? null, $entityManager);
@@ -735,6 +757,65 @@ class ProfessionalController extends AbstractController
         $this->syncLaundryEquipments($laundry, $payload, $entityManager);
 
         $laundry->setUpdatedAt(new \DateTime());
+    }
+
+    /**
+     * Résout les coordonnées d'une adresse sans bloquer le flux de création en cas d'échec API.
+     *
+     * @return array{latitude: float, longitude: float}|null
+     */
+    private function resolveAddressCoordinates(Address $address): ?array
+    {
+        $query = trim(sprintf(
+            '%s, %s %s, %s',
+            $address->getStreet(),
+            (string) $address->getPostalCode(),
+            $address->getCity(),
+            $address->getCountry()
+        ));
+
+        if ($query === '') {
+            return null;
+        }
+
+        try {
+            $response = $this->httpClient->request('GET', 'https://nominatim.openstreetmap.org/search', [
+                'headers' => [
+                    'User-Agent' => 'LM-React/1.0 (contact: support@lm-react.local)',
+                    'Accept' => 'application/json',
+                ],
+                'query' => [
+                    'q' => $query,
+                    'format' => 'jsonv2',
+                    'limit' => 1,
+                    'addressdetails' => 0,
+                ],
+                'timeout' => 5,
+            ]);
+
+            $data = $response->toArray(false);
+            if (!is_array($data) || $data === []) {
+                return null;
+            }
+
+            $firstResult = is_array($data[0] ?? null) ? $data[0] : null;
+            if ($firstResult === null) {
+                return null;
+            }
+
+            $latitude = isset($firstResult['lat']) ? (float) $firstResult['lat'] : null;
+            $longitude = isset($firstResult['lon']) ? (float) $firstResult['lon'] : null;
+            if ($latitude === null || $longitude === null) {
+                return null;
+            }
+
+            return [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+            ];
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function syncLaundryServices(Laundry $laundry, mixed $serviceIds, EntityManagerInterface $entityManager): void

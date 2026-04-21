@@ -406,6 +406,7 @@ class AdminController extends AbstractController
                 'postalCode' => $address->getPostalCode(),
                 'city' => $address->getCity(),
                 'country' => $address->getCountry(),
+                'geolocalizationStatus' => $address->getGeolocalizationStatus()->value,
             ] : null,
             'professional' => [
                 'id' => $professional->getId(),
