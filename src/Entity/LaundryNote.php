@@ -6,6 +6,7 @@ use App\Repository\LaundryNoteRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: LaundryNoteRepository::class)]
 class LaundryNote
@@ -13,6 +14,7 @@ class LaundryNote
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundryNotes')]
@@ -21,30 +23,39 @@ class LaundryNote
 
     #[ORM\ManyToOne(inversedBy: 'laundryNotes')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['laundry:read'])]
     private User $user;
 
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $rating;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['laundry:read'])]
     private \DateTimeInterface $ratedAt;
 
     #[ORM\Column(length: 500, nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?string $comment = null;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?\DateTimeInterface $commentedAt = null;
 
     #[ORM\Column(length: 500, nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?string $response = null;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?\DateTimeInterface $respondedAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?string $commentDeletedReason = null;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?\DateTimeInterface $commentDeletedAt = null;
 
     #[ORM\OneToMany(mappedBy: 'laundryNote', targetEntity: LaundryNoteReport::class)]

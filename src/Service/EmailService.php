@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\EmailVerificationToken;
+use App\Entity\Laundry;
 use App\Entity\Professional;
 use App\Entity\User;
 use Symfony\Component\Mailer\MailerInterface;
@@ -555,6 +556,269 @@ HTML;
     </body>
 </html>
 HTML;
+    }
+
+    public function sendLaundryApprovalEmail(Laundry $Laundry): bool
+    {
+        try {
+            $user = $Laundry->getProfessional()->getUser();
+            $html = $this->renderLaundryApprovalEmail($user, $Laundry);
+
+            $email = (new Email())
+                ->from(new Address($this->fromEmail, $this->appName))
+                ->to(new Address($user->getEmail(), ($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')))
+                ->subject('Votre laverie a été validée!')
+                ->html($html);
+
+            $this->mailer->send($email);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function sendLaundryRejectionEmail(Laundry $Laundry, string $rejectionReason): bool
+    {
+        try {
+            $user = $Laundry->getProfessional()->getUser();
+            $html = $this->renderLaundryRejectionEmail($user, $Laundry, $rejectionReason);
+
+            $email = (new Email())
+                ->from(new Address($this->fromEmail, $this->appName))
+                ->to(new Address($user->getEmail(), ($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')))
+                ->subject('Votre laverie a été refusée!')
+                ->html($html);
+
+            $this->mailer->send($email);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    private function renderLaundryApprovalEmail(User $user, Laundry $laundry): string
+    {
+        return <<<HTML
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Compte professionnel validé</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            line-height: 1.6;
+                            color: #333;
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 20px;
+                        }
+                        .container {
+                            background-color: #f9f9f9;
+                            border: 1px solid #ddd;
+                            border-radius: 5px;
+                            padding: 30px;
+                        }
+                        .header {
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }
+                        .header h1 {
+                            color: #27ae60;
+                            margin: 0;
+                        }
+                        .content {
+                            margin-bottom: 30px;
+                        }
+                        .button {
+                            display: inline-block;
+                            padding: 12px 30px;
+                            background-color: #27ae60;
+                            color: white;
+                            text-decoration: none;
+                            border-radius: 5px;
+                            margin: 20px 0;
+                        }
+                        .button:hover {
+                            background-color: #229954;
+                        }
+                        .success-box {
+                            background-color: #d4edda;
+                            border: 1px solid #c3e6cb;
+                            border-radius: 5px;
+                            padding: 15px;
+                            margin: 20px 0;
+                            color: #155724;
+                        }
+                        .footer {
+                            border-top: 1px solid #ddd;
+                            padding-top: 20px;
+                            font-size: 12px;
+                            color: #666;
+                            text-align: center;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>✓ Félicitations!</h1>
+                        </div>
+
+                        <div class="content">
+                            <p>Bonjour {$user->getFirstName()},</p>
+
+                            <p>
+                                Nous sommes heureux de vous informer que votre laverie  <strong>{$laundry->getEstablishmentName()}</strong> 
+                                a été validé avec succès par notre équipe d'administration!
+                            </p>
+
+                            <div class="success-box">
+                                <strong>Votre laverie est maintenant actif.</strong><br>
+                                Elle est maintenant accessible par le public sur la plateforme.
+                            </div>
+
+                            <p style="margin-top: 30px; color: #666; font-size: 12px;">
+                                Si vous avez des questions, n'hésitez pas à nous contacter.
+                            </p>
+                        </div>
+
+                        <div class="footer">
+                            <p>&copy; 2026 LaundryMap. Tous droits réservés.</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+            HTML;
+    }
+
+    private function renderLaundryRejectionEmail(User $user, Laundry $laundry, string $rejectionReason): string
+    {
+        return <<<HTML
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Décision concernant votre Laverie {$laundry->getEstablishmentName()}</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            line-height: 1.6;
+                            color: #333;
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 20px;
+                        }
+                        .container {
+                            background-color: #f9f9f9;
+                            border: 1px solid #ddd;
+                            border-radius: 5px;
+                            padding: 30px;
+                        }
+                        .header {
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }
+                        .header h1 {
+                            color: #d32f2f;
+                            margin: 0;
+                        }
+                        .content {
+                            margin-bottom: 30px;
+                        }
+                        .button {
+                            display: inline-block;
+                            padding: 12px 30px;
+                            background-color: #3498db;
+                            color: white;
+                            text-decoration: none;
+                            border-radius: 5px;
+                            margin: 20px 0;
+                        }
+                        .button:hover {
+                            background-color: #2980b9;
+                        }
+                        .rejection-box {
+                            background-color: #ffebee;
+                            border: 1px solid #ef9a9a;
+                            border-radius: 5px;
+                            padding: 15px;
+                            margin: 20px 0;
+                            color: #c62828;
+                        }
+                        .reason-section {
+                            background-color: #f5f5f5;
+                            border-left: 4px solid #d32f2f;
+                            padding: 15px;
+                            margin: 20px 0;
+                        }
+                        .info-box {
+                            background-color: #e3f2fd;
+                            border: 1px solid #90caf9;
+                            border-radius: 5px;
+                            padding: 15px;
+                            margin: 20px 0;
+                            color: #1565c0;
+                        }
+                        .footer {
+                            border-top: 1px solid #ddd;
+                            padding-top: 20px;
+                            font-size: 12px;
+                            color: #666;
+                            text-align: center;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Décision concernant votre demande</h1>
+                        </div>
+
+                        <div class="content">
+                            <p>Bonjour {$user->getFirstName()},</p>
+
+                            <p>
+                                Merci de votre intérêt pour LaundryMap. Après examen attentif de votre demande 
+                                pour la laverie <strong>{$laundry->getEstablishmentName()}</strong>, nous regrettons de ne pas pouvoir valider à ce moment.
+                            </p>
+
+                            <div class="rejection-box">
+                                <strong>Statut: Refusé</strong>
+                            </div>
+
+                            <h3>Raison du refus:</h3>
+                            <div class="reason-section">
+                                {$rejectionReason}
+                            </div>
+
+                            <h3>Comment continuer ?</h3>
+                            <div class="info-box">
+                                Pour soumettre une nouvelle demande, apportez les corrections nécessaires directement depuis la modification de votre laverie.
+                            </div>
+
+                            <p>
+                                Si vous estimez que cette décision a été prise par erreur ou si vous avez des questions concernant les raisons du refus, 
+                                n'hésitez pas à nous contacter. Nous serons heureux de discuter de votre situation et de vous aider.
+                            </p>
+
+                            <center>
+                                <a href="{$this->frontendUrl}/contact" class="button">Nous contacter</a>
+                            </center>
+
+                            <p style="margin-top: 30px; color: #666; font-size: 12px;">
+                                Cordialement,<br>
+                                L'équipe LaundryMap
+                            </p>
+                        </div>
+
+                        <div class="footer">
+                            <p>&copy; 2026 LaundryMap. Tous droits réservés.</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+        HTML;
     }
 }
 

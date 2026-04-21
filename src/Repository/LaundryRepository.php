@@ -18,14 +18,30 @@ class LaundryRepository extends ServiceEntityRepository
     }
 
     /**
-     * Count pending laundries that are not soft-deleted.
+     * Find pending professionals with pagination
+     */
+    public function findPendingLaundries(int $limit = 10, int $offset = 0): array
+    {
+        return $this->createQueryBuilder('l')
+            ->leftJoin('l.address', "addr")
+            ->leftJoin("l.professional", "pro")
+            ->where('l.status = :status')
+            ->setParameter('status', LaundryStatusEnum::PENDING)
+            ->orderBy('l.establishmentName', 'ASC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Count pending laudries
      */
     public function countPendingLaundries(): int
     {
-        return (int) $this->createQueryBuilder('l')
+        return $this->createQueryBuilder('l')
             ->select('COUNT(l.id)')
             ->where('l.status = :status')
-            ->andWhere('l.deletedAt IS NULL')
             ->setParameter('status', LaundryStatusEnum::PENDING)
             ->getQuery()
             ->getSingleScalarResult();

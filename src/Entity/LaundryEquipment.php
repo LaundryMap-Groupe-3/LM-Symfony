@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Enum\LaundryEquipmentTypeEnum;
 use App\Repository\LaundryEquipmentRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: LaundryEquipmentRepository::class)]
 class LaundryEquipment
@@ -12,6 +13,7 @@ class LaundryEquipment
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundryEquipments')]
@@ -19,22 +21,28 @@ class LaundryEquipment
     private Laundry $laundry;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?int $equipmentReference = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read'])]
     private string $name;
 
 
     #[ORM\Column(type: 'string', enumType: LaundryEquipmentTypeEnum::class)]
+    #[Groups(['laundry:read'])]
     private LaundryEquipmentTypeEnum $type;
 
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $capacity;
 
     #[ORM\Column(type: 'float')]
+    #[Groups(['laundry:read'])]
     private float $price;
 
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $duration;
 
     public function getId(): int

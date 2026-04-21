@@ -36,6 +36,12 @@ services:
             $apiKey: '%env(INSEE_API_KEY)%'
             $sireneApiUrl: '%env(default::INSEE_SIRENE_API_URL)%'
 
+    App\Service\WiLineService:
+        arguments:
+            $apiUser: '%env(WILINE_API_USER)%'
+            $apiKey: '%env(WILINE_API_KEY)%'
+            $apiUrl: '%env(default::WILINE_API_URL)%'
+
     App\Service\EmailService:
         arguments:
             $frontendUrl: '%env(FRONTEND_URL)%'

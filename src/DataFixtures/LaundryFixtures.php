@@ -8,12 +8,10 @@ use App\Entity\LaundryClosure;
 use App\Entity\LaundryEquipment;
 use App\Entity\LaundryExceptionalClosure;
 use App\Entity\LaundryFavorite;
-use App\Entity\LaundryMedia;
 use App\Entity\LaundryNote;
 use App\Entity\LaundryNoteReport;
 use App\Entity\LaundryPayment;
 use App\Entity\LaundryService;
-use App\Entity\Media;
 use App\Entity\PaymentMethod;
 use App\Entity\Professional;
 use App\Entity\Service;
@@ -124,43 +122,13 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
             PaymentMethodFixtures::CONTACTLESS_NAME
         );
 
-        $logo1 = new Media();
-        $logo1->setLocation('/uploads/laundries/logo-oberkampf.png');
-        $logo1->setOriginalName('logo-oberkampf.png');
-        $logo1->setWeight(156321);
-        $logo1->setMimeType('image/png');
-        $manager->persist($logo1);
-
-        $logo2 = new Media();
-        $logo2->setLocation('/uploads/laundries/logo-lille-clean.png');
-        $logo2->setOriginalName('logo-lille-clean.png');
-        $logo2->setWeight(147810);
-        $logo2->setMimeType('image/png');
-        $manager->persist($logo2);
-
-        $cover1 = new Media();
-        $cover1->setLocation('/uploads/laundries/cover-oberkampf.jpg');
-        $cover1->setOriginalName('cover-oberkampf.jpg');
-        $cover1->setWeight(398450);
-        $cover1->setMimeType('image/jpeg');
-        $manager->persist($cover1);
-
-        $cover2 = new Media();
-        $cover2->setLocation('/uploads/laundries/cover-lille-clean.jpg');
-        $cover2->setOriginalName('cover-lille-clean.jpg');
-        $cover2->setWeight(412900);
-        $cover2->setMimeType('image/jpeg');
-        $manager->persist($cover2);
-
         $laundry1 = new Laundry();
         $laundry1->setProfessional($professional1);
-        $laundry1->setStatus(LaundryStatusEnum::APPROVED);
-        $laundry1->setWiLineReference(100001);
+        $laundry1->setStatus(LaundryStatusEnum::PENDING);
         $laundry1->setAddress($laundryAddress1);
-        $laundry1->setLogo($logo1);
         $laundry1->setEstablishmentName('Laverie Bastille Express');
         $laundry1->setContactEmail('contact@bastille-express.test');
-        $laundry1->setDescription('Large laundry with modern washers and dryers.');
+        $laundry1->setDescription('Grande laverie avec des machines a laver et seche-linge modernes.');
         $laundry1->setCreatedAt(new \DateTime('2026-03-01 08:45:00'));
         $laundry1->setUpdatedAt(new \DateTime('2026-04-10 09:20:00'));
         $manager->persist($laundry1);
@@ -168,12 +136,10 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $laundry2 = new Laundry();
         $laundry2->setProfessional($professional2);
         $laundry2->setStatus(LaundryStatusEnum::APPROVED);
-        $laundry2->setWiLineReference(100002);
         $laundry2->setAddress($laundryAddress2);
-        $laundry2->setLogo($logo2);
         $laundry2->setEstablishmentName('Lille Clean Hub');
         $laundry2->setContactEmail('hello@lille-clean-hub.test');
-        $laundry2->setDescription('Neighborhood laundry with folding area and quick cycles.');
+        $laundry2->setDescription('Laverie de quartier avec espace de pliage et cycles rapides.');
         $laundry2->setCreatedAt(new \DateTime('2026-03-05 09:15:00'));
         $laundry2->setUpdatedAt(new \DateTime('2026-04-09 17:05:00'));
         $manager->persist($laundry2);
@@ -288,18 +254,6 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $favorite3->setLaundry($laundry2);
         $favorite3->setUser($user2);
         $manager->persist($favorite3);
-
-        $laundryMedia1 = new LaundryMedia();
-        $laundryMedia1->setLaundry($laundry1);
-        $laundryMedia1->setMedia($cover1);
-        $laundryMedia1->setDescription('Main room view');
-        $manager->persist($laundryMedia1);
-
-        $laundryMedia2 = new LaundryMedia();
-        $laundryMedia2->setLaundry($laundry2);
-        $laundryMedia2->setMedia($cover2);
-        $laundryMedia2->setDescription('Drying area');
-        $manager->persist($laundryMedia2);
 
         $note1 = new LaundryNote();
         $note1->setLaundry($laundry1);

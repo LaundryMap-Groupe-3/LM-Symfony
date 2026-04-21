@@ -2,6 +2,8 @@
 
 namespace App\Controller;
 
+use App\Entity\Admin;
+use App\Entity\AdminPreference;
 use App\Entity\User;
 use App\Entity\UserPreference;
 use App\Entity\Language;
@@ -203,21 +205,30 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/user/preferences', name: 'api_user_preferences_get', methods: ['GET'])]
+    #[Route('/api/Admin/preferences', name: 'api_admin_preferences_create', methods: ['GET'])]
     public function getPreferences(EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();
 
-        if (!$user || !$user instanceof User) {
+        if ((!$user || !$user instanceof User) && (!$user || !$user instanceof Admin)) {
             return $this->json(['error' => 'errors.not_authenticated'], 401);
         }
 
         // Get or create user preferences
-        $preferences = $user->getUserPreference();
-        
+        if($user instanceof User) {
+            $preferences = $user->getUserPreference();
+        } elseif($user instanceof Admin) {
+            $preferences = $user->getAdminPreference();
+        }
+
         if (!$preferences) {
-            // Create default preferences if not exists
-            $preferences = new UserPreference();
-            $preferences->setUser($user);
+            if($user instanceof User) {
+                $preferences = new UserPreference();
+                $preferences->setUser($user);
+            } elseif($user instanceof Admin) {
+                $preferences = new AdminPreference();
+                $preferences->setAdmin($user);
+            }
             
             // Get default language (French)
             $defaultLanguage = $entityManager->getRepository(Language::class)->findOneBy(['code' => 'fr']);
@@ -232,7 +243,11 @@ class UserController extends AbstractController
             $preferences->setTheme(ThemeEnum::LIGHT);
             $preferences->setNotifications(true);
             
-            $user->setUserPreference($preferences);
+            if($user instanceof User) {
+                $user->setUserPreference($preferences);
+            } elseif($user instanceof Admin) {
+                $user->setAdminPreference($preferences);
+            }
             $entityManager->persist($preferences);
             $entityManager->flush();
         }
@@ -247,23 +262,34 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/user/preferences', name: 'api_user_preferences_update', methods: ['PUT'])]
+    #[Route('/api/Admin/preferences', name: 'api_admin_preferences_update', methods: ['PUT'])]
     public function updatePreferences(
         Request $request,
         EntityManagerInterface $entityManager
     ): JsonResponse {
         $user = $this->getUser();
 
-        if (!$user || !$user instanceof User) {
+        if ((!$user || !$user instanceof User) && (!$user || !$user instanceof Admin)) {
             return $this->json(['error' => 'errors.not_authenticated'], 401);
         }
 
         $data = json_decode($request->getContent(), true);
         
         // Get or create preferences
-        $preferences = $user->getUserPreference();
+        if($user instanceof User) {
+            $preferences = $user->getUserPreference();
+        } elseif($user instanceof Admin) {
+            $preferences = $user->getAdminPreference();
+        }
+
         if (!$preferences) {
-            $preferences = new UserPreference();
-            $preferences->setUser($user);
+            if($user instanceof User) {
+                $preferences = new UserPreference();
+                $preferences->setUser($user);
+            } elseif($user instanceof Admin) {
+                $preferences = new AdminPreference();
+                $preferences->setAdmin($user);
+            }
             $entityManager->persist($preferences);
         }
 
