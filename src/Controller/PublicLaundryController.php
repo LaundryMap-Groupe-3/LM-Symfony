@@ -156,6 +156,59 @@ class PublicLaundryController extends AbstractController
             ],
         ]);
     }
+     #[Route('/api/laundries/{id}', name: 'api_public_laundry_detail', methods: ['GET'])]
+    public function detail(int $id, LaundryRepository $laundryRepository, LaundryNoteRepository $laundryNoteRepository): JsonResponse
+    {
+        $laundry = $laundryRepository->find($id);
+        if (!$laundry || $laundry->getStatus() !== \App\Enum\LaundryStatusEnum::APPROVED) {
+            return $this->json(['error' => 'laundry_not_found_or_not_approved'], 404);
+        }
+
+        $address = $laundry->getAddress();
+        $logo = $laundry->getLogo();
+        $laundryMedias = $laundry->getLaundryMedias();
+        $averageNote = null;
+        $reviewCount = 0;
+        $stats = $laundryNoteRepository->getAverageRatingAndCountByLaundryIds([(int) $laundry->getId()]);
+        if ($stats && $stats['avg_rating'] !== null) {
+            $averageNote = round((float) $stats['avg_rating'], 2);
+            $reviewCount = (int) $stats['review_count'];
+        }
+
+        $medias = [];
+        foreach ($laundryMedias as $laundryMedia) {
+            $media = $laundryMedia->getMedia();
+            $medias[] = [
+                'id' => $media->getId(),
+                'location' => $media->getLocation(),
+                'originalName' => $media->getOriginalName(),
+                'description' => $laundryMedia->getDescription(),
+            ];
+        }
+
+        $result = [
+            'id' => $laundry->getId(),
+            'establishmentName' => $laundry->getEstablishmentName(),
+            'description' => $laundry->getDescription(),
+            'address' => $address ? $address->getAddress() : '',
+            'street' => $address ? $address->getStreet() : '',
+            'postalCode' => $address ? $address->getPostalCode() : '',
+            'city' => $address ? $address->getCity() : '',
+            'country' => $address ? $address->getCountry() : '',
+            'latitude' => $address ? $address->getLatitude() : null,
+            'longitude' => $address ? $address->getLongitude() : null,
+            'logoUrl' => $logo ? $logo->getLocation() : null,
+            'medias' => $medias,
+            'status' => $laundry->getStatus(),
+            'createdAt' => $laundry->getCreatedAt()?->format('c'),
+            'updatedAt' => $laundry->getUpdatedAt()?->format('c'),
+            'rating' => $averageNote,
+            'reviewCount' => $reviewCount,
+            // Ajoutez ici d'autres champs utiles (horaires, équipements, services, etc.)
+        ];
+
+        return $this->json($result);
+    }
 
     private function distanceInKm(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
