@@ -289,8 +289,11 @@ class PublicLaundryController extends AbstractController
 
         $currentDay = strtolower($now->format('l'));
         $matchingSlots = [];
+        $hasAnyWeeklySchedule = false;
 
         foreach ($laundry->getLaundryClosures() as $closure) {
+            $hasAnyWeeklySchedule = true;
+
             if ($closure->getDay()->value !== $currentDay) {
                 continue;
             }
@@ -301,7 +304,7 @@ class PublicLaundryController extends AbstractController
         }
 
         if ($matchingSlots === []) {
-            return true;
+            return !$hasAnyWeeklySchedule;
         }
 
         if ($openAtMinutes > $closeAtMinutes) {
@@ -352,8 +355,11 @@ class PublicLaundryController extends AbstractController
         $currentDay = strtolower($now->format('l'));
         $currentMinutes = ((int) $now->format('H')) * 60 + (int) $now->format('i');
         $hasScheduleToday = false;
+        $hasAnyWeeklySchedule = false;
 
         foreach ($laundry->getLaundryClosures() as $closure) {
+            $hasAnyWeeklySchedule = true;
+
             if ($closure->getDay()->value !== $currentDay) {
                 continue;
             }
@@ -379,6 +385,6 @@ class PublicLaundryController extends AbstractController
             return false;
         }
 
-        return true;
+        return !$hasAnyWeeklySchedule;
     }
 }

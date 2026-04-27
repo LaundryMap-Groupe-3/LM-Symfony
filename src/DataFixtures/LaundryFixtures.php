@@ -6,7 +6,6 @@ use App\Entity\Address;
 use App\Entity\Laundry;
 use App\Entity\LaundryClosure;
 use App\Entity\LaundryEquipment;
-use App\Entity\LaundryExceptionalClosure;
 use App\Entity\LaundryFavorite;
 use App\Entity\LaundryNote;
 use App\Entity\LaundryNoteReport;
@@ -314,31 +313,48 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
             $approvedLaundries[] = $laundry;
         }
 
-        $closure1 = new LaundryClosure();
-        $closure1->setLaundry($laundry1);
-        $closure1->setDay(DayOfWeekEnum::SUNDAY);
-        $closure1->setStartTime(new \DateTime('08:00:00'));
-        $closure1->setEndTime(new \DateTime('12:00:00'));
-        $closure1->setCreatedAt($now);
-        $closure1->setUpdatedAt($now);
-        $manager->persist($closure1);
+        $extendedHoursSchedule = [
+            DayOfWeekEnum::MONDAY->value => [['06:30', '22:30']],
+            DayOfWeekEnum::TUESDAY->value => [['06:30', '22:30']],
+            DayOfWeekEnum::WEDNESDAY->value => [['06:30', '22:30']],
+            DayOfWeekEnum::THURSDAY->value => [['06:30', '22:30']],
+            DayOfWeekEnum::FRIDAY->value => [['06:30', '23:00']],
+            DayOfWeekEnum::SATURDAY->value => [['07:00', '23:00']],
+            DayOfWeekEnum::SUNDAY->value => [['08:00', '21:00']],
+        ];
 
-        $closure2 = new LaundryClosure();
-        $closure2->setLaundry($laundry2);
-        $closure2->setDay(DayOfWeekEnum::MONDAY);
-        $closure2->setStartTime(new \DateTime('07:00:00'));
-        $closure2->setEndTime(new \DateTime('09:00:00'));
-        $closure2->setCreatedAt($now);
-        $closure2->setUpdatedAt($now);
-        $manager->persist($closure2);
+        $splitDaySchedule = [
+            DayOfWeekEnum::MONDAY->value => [['07:00', '13:00'], ['14:00', '21:00']],
+            DayOfWeekEnum::TUESDAY->value => [['07:00', '13:00'], ['14:00', '21:00']],
+            DayOfWeekEnum::WEDNESDAY->value => [['07:00', '13:00'], ['14:00', '21:00']],
+            DayOfWeekEnum::THURSDAY->value => [['07:00', '13:00'], ['14:00', '21:00']],
+            DayOfWeekEnum::FRIDAY->value => [['07:00', '13:00'], ['14:00', '21:30']],
+            DayOfWeekEnum::SATURDAY->value => [['08:00', '13:00'], ['14:00', '20:30']],
+            DayOfWeekEnum::SUNDAY->value => [['09:00', '13:00']],
+        ];
 
-        $exceptionalClosure = new LaundryExceptionalClosure();
-        $exceptionalClosure->setLaundry($laundry1);
-        $exceptionalClosure->setStartDate(new \DateTime('2026-08-15 00:00:00'));
-        $exceptionalClosure->setEndDate(new \DateTime('2026-08-16 23:59:59'));
-        $exceptionalClosure->setReason('Maintenance work');
-        $exceptionalClosure->setCreatedAt($now);
-        $manager->persist($exceptionalClosure);
+        $compactTownSchedule = [
+            DayOfWeekEnum::MONDAY->value => [],
+            DayOfWeekEnum::TUESDAY->value => [['07:30', '12:30'], ['14:00', '20:00']],
+            DayOfWeekEnum::WEDNESDAY->value => [['07:30', '12:30'], ['14:00', '20:00']],
+            DayOfWeekEnum::THURSDAY->value => [['07:30', '12:30'], ['14:00', '20:00']],
+            DayOfWeekEnum::FRIDAY->value => [['07:30', '12:30'], ['14:00', '20:30']],
+            DayOfWeekEnum::SATURDAY->value => [['08:30', '19:00']],
+            DayOfWeekEnum::SUNDAY->value => [],
+        ];
+
+        $this->addOpeningHours($manager, $laundry1, $extendedHoursSchedule, $now);
+        $this->addOpeningHours($manager, $laundry2, $splitDaySchedule, $now);
+
+        foreach ($approvedLaundries as $index => $approvedLaundry) {
+            $schedule = match ($index % 3) {
+                0 => $extendedHoursSchedule,
+                1 => $splitDaySchedule,
+                default => $compactTownSchedule,
+            };
+
+            $this->addOpeningHours($manager, $approvedLaundry, $schedule, $now);
+        }
 
         $equipment1 = new LaundryEquipment();
         $equipment1->setLaundry($laundry1);
@@ -487,6 +503,47 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $addressEntity->setGeolocalizationStatus(GeolocalizationStatusEnum::VERIFIED);
 
         return $addressEntity;
+    }
+
+    /**
+     * @param array<string, array<int, array{0: string, 1: string}>> $schedule
+     */
+    private function addOpeningHours(
+        ObjectManager $manager,
+        Laundry $laundry,
+        array $schedule,
+        \DateTimeInterface $now
+    ): void {
+        foreach ($schedule as $day => $slots) {
+            $dayEnum = DayOfWeekEnum::tryFrom((string) $day);
+            if ($dayEnum === null || !is_array($slots)) {
+                continue;
+            }
+
+            foreach ($slots as $slot) {
+                $start = (string) ($slot[0] ?? '');
+                $end = (string) ($slot[1] ?? '');
+
+                if (!$this->isValidHour($start) || !$this->isValidHour($end) || $start >= $end) {
+                    continue;
+                }
+
+                $closure = new LaundryClosure();
+                $closure->setLaundry($laundry);
+                $closure->setDay($dayEnum);
+                $closure->setStartTime(\DateTime::createFromFormat('H:i', $start) ?: new \DateTime('00:00:00'));
+                $closure->setEndTime(\DateTime::createFromFormat('H:i', $end) ?: new \DateTime('00:00:00'));
+                $closure->setCreatedAt($now);
+                $closure->setUpdatedAt($now);
+
+                $manager->persist($closure);
+            }
+        }
+    }
+
+    private function isValidHour(string $value): bool
+    {
+        return (bool) preg_match('/^(?:[01]\\d|2[0-3]):[0-5]\\d$/', $value);
     }
 
     private function findOneOrFail(
