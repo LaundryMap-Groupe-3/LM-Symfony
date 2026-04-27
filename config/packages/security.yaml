@@ -43,6 +43,7 @@ security:
         - { path: ^/api/languages, roles: PUBLIC_ACCESS }
         - { path: ^/api/laundries/nearby, roles: PUBLIC_ACCESS }
         - { path: ^/api/laundries/\d+$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/laundries/\d+/reviews$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 

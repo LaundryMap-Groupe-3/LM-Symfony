@@ -79,6 +79,54 @@ class PublicLaundryController extends AbstractController
                     ];
                 }, $laundry->getLaundryMedias()->toArray())
                 : [],
+            'closures' => array_map(fn($c) => [
+                    'day'       => $c->getDay()?->value,
+                    'startTime' => $c->getStartTime()->format('H:i'),
+                    'endTime'   => $c->getEndTime()->format('H:i'),
+            ], $laundry->getLaundryClosures()->toArray()),
+        ]);
+    }
+
+    #[Route('/api/laundries/{id}/reviews', name: 'api_public_laundries_reviews', methods: ['GET'], requirements: ['id' => '\\d+'])]
+    public function reviews(int $id, Request $request, LaundryRepository $laundryRepository, LaundryNoteRepository $laundryNoteRepository): JsonResponse
+    {
+        $laundry = $laundryRepository->find($id);
+
+        if (!$laundry || $laundry->getDeletedAt() !== null || $laundry->getStatus() !== LaundryStatusEnum::APPROVED) {
+            return $this->json(['error' => 'not_found'], 404);
+        }
+
+        $limit = max(1, min(50, (int) $request->query->get('limit', 20)));
+
+        $notes = $laundryNoteRepository->findPublicReviewsByLaundryId((int) $laundry->getId(), $limit);
+
+        $reviews = array_map(static function ($note) {
+            $user = $note->getUser();
+            $firstName = trim((string) ($user->getFirstName() ?? ''));
+            $lastName = trim((string) ($user->getLastName() ?? ''));
+            $author = 'Anonyme';
+            if ($firstName !== '' || $lastName !== '') {
+                $author = trim($firstName . ' ' . ($lastName !== '' ? mb_strtoupper($lastName) : ''));
+            }
+
+            return [
+                'id' => $note->getId(),
+                'author' => $author,
+                'rating' => $note->getRating(),
+                'comment' => $note->getComment(),
+                'commentedAt' => $note->getCommentedAt()?->format(DATE_ATOM),
+                'response' => $note->getResponse(),
+                'respondedAt' => $note->getRespondedAt()?->format(DATE_ATOM),
+            ];
+        }, $notes);
+
+        return $this->json([
+            'laundryId' => $laundry->getId(),
+            'reviews' => $reviews,
+            'meta' => [
+                'count' => count($reviews),
+                'limit' => $limit,
+            ],
         ]);
     }
 

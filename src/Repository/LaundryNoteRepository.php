@@ -16,6 +16,28 @@ class LaundryNoteRepository extends ServiceEntityRepository
         parent::__construct($registry, LaundryNote::class);
     }
 
+    /**
+     * Retourne les avis publics (commentaires non supprimés) d'une laverie.
+     *
+     * @return LaundryNote[]
+     */
+    public function findPublicReviewsByLaundryId(int $laundryId, int $limit = 20): array
+    {
+        $limit = max(1, min(50, $limit));
+
+        return $this->createQueryBuilder('n')
+            ->leftJoin('n.user', 'u')->addSelect('u')
+            ->andWhere('IDENTITY(n.laundry) = :laundryId')
+            ->andWhere('n.comment IS NOT NULL')
+            ->andWhere('n.commentDeletedAt IS NULL')
+            ->setParameter('laundryId', $laundryId)
+            ->orderBy('n.commentedAt', 'DESC')
+            ->addOrderBy('n.ratedAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
      /**
      * Retourne la note moyenne et le nombre d'avis pour un tableau d'IDs de laveries
      * @param int[] $laundryIds
