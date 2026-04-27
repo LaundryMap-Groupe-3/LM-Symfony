@@ -6,7 +6,6 @@ use App\Entity\Address;
 use App\Entity\Laundry;
 use App\Entity\LaundryClosure;
 use App\Entity\LaundryEquipment;
-use App\Entity\LaundryExceptionalClosure;
 use App\Entity\LaundryFavorite;
 use App\Entity\LaundryNote;
 use App\Entity\LaundryNoteReport;
@@ -144,31 +143,218 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $laundry2->setUpdatedAt(new \DateTime('2026-04-09 17:05:00'));
         $manager->persist($laundry2);
 
-        $closure1 = new LaundryClosure();
-        $closure1->setLaundry($laundry1);
-        $closure1->setDay(DayOfWeekEnum::SUNDAY);
-        $closure1->setStartTime(new \DateTime('08:00:00'));
-        $closure1->setEndTime(new \DateTime('12:00:00'));
-        $closure1->setCreatedAt($now);
-        $closure1->setUpdatedAt($now);
-        $manager->persist($closure1);
+        $approvedLaundryData = [
+            [
+                'professional' => $professional1,
+                'address' => '28 Avenue de Clichy 75017 Paris',
+                'street' => '28 Avenue de Clichy',
+                'postalCode' => 75017,
+                'city' => 'Paris',
+                'latitude' => 48.8852,
+                'longitude' => 2.3256,
+                'establishmentName' => 'Laverie Batignolles 24-7',
+                'contactEmail' => 'contact@batignolles24-7.test',
+                'description' => 'Laverie en libre-service ouverte tard, machines recentes et espace attente.',
+                'createdAt' => '2026-03-06 08:30:00',
+                'updatedAt' => '2026-04-11 10:45:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '14 Rue Lecourbe 75015 Paris',
+                'street' => '14 Rue Lecourbe',
+                'postalCode' => 75015,
+                'city' => 'Paris',
+                'latitude' => 48.8436,
+                'longitude' => 2.3043,
+                'establishmentName' => 'Paris Sud Lavage Pro',
+                'contactEmail' => 'hello@parissud-lavage-pro.test',
+                'description' => 'Laverie de quartier avec cycles eco et zone de pliage fonctionnelle.',
+                'createdAt' => '2026-03-07 10:20:00',
+                'updatedAt' => '2026-04-10 16:35:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '9 Rue de Belleville 75020 Paris',
+                'street' => '9 Rue de Belleville',
+                'postalCode' => 75020,
+                'city' => 'Paris',
+                'latitude' => 48.8722,
+                'longitude' => 2.3794,
+                'establishmentName' => 'Belleville Clean Station',
+                'contactEmail' => 'contact@belleville-clean-station.test',
+                'description' => 'Grand espace de lavage avec seche-linge grande capacite.',
+                'createdAt' => '2026-03-08 11:10:00',
+                'updatedAt' => '2026-04-12 09:05:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '3 Rue Monge 75005 Paris',
+                'street' => '3 Rue Monge',
+                'postalCode' => 75005,
+                'city' => 'Paris',
+                'latitude' => 48.8453,
+                'longitude' => 2.3516,
+                'establishmentName' => 'Latin Quarter Wash',
+                'contactEmail' => 'contact@latin-quarter-wash.test',
+                'description' => 'Laverie rapide proche des universites, paiement sans contact accepte.',
+                'createdAt' => '2026-03-09 09:50:00',
+                'updatedAt' => '2026-04-11 18:40:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '41 Rue Ordener 75018 Paris',
+                'street' => '41 Rue Ordener',
+                'postalCode' => 75018,
+                'city' => 'Paris',
+                'latitude' => 48.8921,
+                'longitude' => 2.3477,
+                'establishmentName' => 'Montmartre Lavage Express',
+                'contactEmail' => 'hello@montmartre-lavage-express.test',
+                'description' => 'Machines performantes et sechoirs ventiles pour linge volumineux.',
+                'createdAt' => '2026-03-10 08:05:00',
+                'updatedAt' => '2026-04-13 12:20:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '11 Avenue Jean Legendre 60200 Compiegne',
+                'street' => '11 Avenue Jean Legendre',
+                'postalCode' => 60200,
+                'city' => 'Compiegne',
+                'latitude' => 49.4179,
+                'longitude' => 2.8261,
+                'establishmentName' => 'Compiegne Wash Center',
+                'contactEmail' => 'contact@compiegne-wash-center.test',
+                'description' => 'Laverie moderne avec programmes courts et espace repassage.',
+                'createdAt' => '2026-03-11 10:00:00',
+                'updatedAt' => '2026-04-14 15:10:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '5 Rue de Paris 60000 Beauvais',
+                'street' => '5 Rue de Paris',
+                'postalCode' => 60000,
+                'city' => 'Beauvais',
+                'latitude' => 49.4297,
+                'longitude' => 2.0821,
+                'establishmentName' => 'Beauvais Lavage Plus',
+                'contactEmail' => 'contact@beauvais-lavage-plus.test',
+                'description' => 'Laverie en centre-ville avec suivi de cycles sur ecran.',
+                'createdAt' => '2026-03-12 11:45:00',
+                'updatedAt' => '2026-04-15 14:00:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '22 Rue de la Republique 60100 Creil',
+                'street' => '22 Rue de la Republique',
+                'postalCode' => 60100,
+                'city' => 'Creil',
+                'latitude' => 49.2561,
+                'longitude' => 2.4827,
+                'establishmentName' => 'Creil Laundry Hub',
+                'contactEmail' => 'hello@creil-laundry-hub.test',
+                'description' => 'Etablissement pratique avec machines 8kg a 18kg.',
+                'createdAt' => '2026-03-13 09:35:00',
+                'updatedAt' => '2026-04-15 17:25:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '17 Rue du Chatel 60300 Senlis',
+                'street' => '17 Rue du Chatel',
+                'postalCode' => 60300,
+                'city' => 'Senlis',
+                'latitude' => 49.2064,
+                'longitude' => 2.5869,
+                'establishmentName' => 'Senlis Lavage Minute',
+                'contactEmail' => 'contact@senlis-lavage-minute.test',
+                'description' => 'Laverie locale avec bornes de paiement carte et espece.',
+                'createdAt' => '2026-03-14 08:55:00',
+                'updatedAt' => '2026-04-16 13:40:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '8 Avenue du Marechal Joffre 60500 Chantilly',
+                'street' => '8 Avenue du Marechal Joffre',
+                'postalCode' => 60500,
+                'city' => 'Chantilly',
+                'latitude' => 49.1945,
+                'longitude' => 2.4682,
+                'establishmentName' => 'Chantilly Press and Wash',
+                'contactEmail' => 'contact@chantilly-press-and-wash.test',
+                'description' => 'Laverie propre et calme avec sechoirs economes en energie.',
+                'createdAt' => '2026-03-15 10:40:00',
+                'updatedAt' => '2026-04-16 19:05:00',
+            ],
+        ];
 
-        $closure2 = new LaundryClosure();
-        $closure2->setLaundry($laundry2);
-        $closure2->setDay(DayOfWeekEnum::MONDAY);
-        $closure2->setStartTime(new \DateTime('07:00:00'));
-        $closure2->setEndTime(new \DateTime('09:00:00'));
-        $closure2->setCreatedAt($now);
-        $closure2->setUpdatedAt($now);
-        $manager->persist($closure2);
+        $approvedLaundries = [];
 
-        $exceptionalClosure = new LaundryExceptionalClosure();
-        $exceptionalClosure->setLaundry($laundry1);
-        $exceptionalClosure->setStartDate(new \DateTime('2026-08-15 00:00:00'));
-        $exceptionalClosure->setEndDate(new \DateTime('2026-08-16 23:59:59'));
-        $exceptionalClosure->setReason('Maintenance work');
-        $exceptionalClosure->setCreatedAt($now);
-        $manager->persist($exceptionalClosure);
+        foreach ($approvedLaundryData as $approvedLaundry) {
+            $approvedAddress = $this->createAddress(
+                $approvedLaundry['address'],
+                $approvedLaundry['street'],
+                $approvedLaundry['postalCode'],
+                $approvedLaundry['city'],
+                $approvedLaundry['latitude'],
+                $approvedLaundry['longitude']
+            );
+            $manager->persist($approvedAddress);
+
+            $laundry = new Laundry();
+            $laundry->setProfessional($approvedLaundry['professional']);
+            $laundry->setStatus(LaundryStatusEnum::APPROVED);
+            $laundry->setAddress($approvedAddress);
+            $laundry->setEstablishmentName($approvedLaundry['establishmentName']);
+            $laundry->setContactEmail($approvedLaundry['contactEmail']);
+            $laundry->setDescription($approvedLaundry['description']);
+            $laundry->setCreatedAt(new \DateTime($approvedLaundry['createdAt']));
+            $laundry->setUpdatedAt(new \DateTime($approvedLaundry['updatedAt']));
+
+            $manager->persist($laundry);
+            $approvedLaundries[] = $laundry;
+        }
+
+        $extendedHoursSchedule = [
+            DayOfWeekEnum::MONDAY->value => [['06:30', '22:30']],
+            DayOfWeekEnum::TUESDAY->value => [['06:30', '22:30']],
+            DayOfWeekEnum::WEDNESDAY->value => [['06:30', '22:30']],
+            DayOfWeekEnum::THURSDAY->value => [['06:30', '22:30']],
+            DayOfWeekEnum::FRIDAY->value => [['06:30', '23:00']],
+            DayOfWeekEnum::SATURDAY->value => [['07:00', '23:00']],
+            DayOfWeekEnum::SUNDAY->value => [['08:00', '21:00']],
+        ];
+
+        $splitDaySchedule = [
+            DayOfWeekEnum::MONDAY->value => [['07:00', '13:00'], ['14:00', '21:00']],
+            DayOfWeekEnum::TUESDAY->value => [['07:00', '13:00'], ['14:00', '21:00']],
+            DayOfWeekEnum::WEDNESDAY->value => [['07:00', '13:00'], ['14:00', '21:00']],
+            DayOfWeekEnum::THURSDAY->value => [['07:00', '13:00'], ['14:00', '21:00']],
+            DayOfWeekEnum::FRIDAY->value => [['07:00', '13:00'], ['14:00', '21:30']],
+            DayOfWeekEnum::SATURDAY->value => [['08:00', '13:00'], ['14:00', '20:30']],
+            DayOfWeekEnum::SUNDAY->value => [['09:00', '13:00']],
+        ];
+
+        $compactTownSchedule = [
+            DayOfWeekEnum::MONDAY->value => [],
+            DayOfWeekEnum::TUESDAY->value => [['07:30', '12:30'], ['14:00', '20:00']],
+            DayOfWeekEnum::WEDNESDAY->value => [['07:30', '12:30'], ['14:00', '20:00']],
+            DayOfWeekEnum::THURSDAY->value => [['07:30', '12:30'], ['14:00', '20:00']],
+            DayOfWeekEnum::FRIDAY->value => [['07:30', '12:30'], ['14:00', '20:30']],
+            DayOfWeekEnum::SATURDAY->value => [['08:30', '19:00']],
+            DayOfWeekEnum::SUNDAY->value => [],
+        ];
+
+        $this->addOpeningHours($manager, $laundry1, $extendedHoursSchedule, $now);
+        $this->addOpeningHours($manager, $laundry2, $splitDaySchedule, $now);
+
+        foreach ($approvedLaundries as $index => $approvedLaundry) {
+            $schedule = match ($index % 3) {
+                0 => $extendedHoursSchedule,
+                1 => $splitDaySchedule,
+                default => $compactTownSchedule,
+            };
+
+            $this->addOpeningHours($manager, $approvedLaundry, $schedule, $now);
+        }
 
         $equipment1 = new LaundryEquipment();
         $equipment1->setLaundry($laundry1);
@@ -240,6 +426,18 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $laundryPayment4->setPaymentMethod($paymentCash);
         $manager->persist($laundryPayment4);
 
+        foreach ($approvedLaundries as $index => $approvedLaundry) {
+            $laundryService = new LaundryService();
+            $laundryService->setLaundry($approvedLaundry);
+            $laundryService->setService($index % 2 === 0 ? $serviceSelf : $serviceFolding);
+            $manager->persist($laundryService);
+
+            $laundryPayment = new LaundryPayment();
+            $laundryPayment->setLaundry($approvedLaundry);
+            $laundryPayment->setPaymentMethod($index % 3 === 0 ? $paymentContactless : $paymentCard);
+            $manager->persist($laundryPayment);
+        }
+
         $favorite1 = new LaundryFavorite();
         $favorite1->setLaundry($laundry1);
         $favorite1->setUser($user1);
@@ -305,6 +503,47 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $addressEntity->setGeolocalizationStatus(GeolocalizationStatusEnum::VERIFIED);
 
         return $addressEntity;
+    }
+
+    /**
+     * @param array<string, array<int, array{0: string, 1: string}>> $schedule
+     */
+    private function addOpeningHours(
+        ObjectManager $manager,
+        Laundry $laundry,
+        array $schedule,
+        \DateTimeInterface $now
+    ): void {
+        foreach ($schedule as $day => $slots) {
+            $dayEnum = DayOfWeekEnum::tryFrom((string) $day);
+            if ($dayEnum === null || !is_array($slots)) {
+                continue;
+            }
+
+            foreach ($slots as $slot) {
+                $start = (string) ($slot[0] ?? '');
+                $end = (string) ($slot[1] ?? '');
+
+                if (!$this->isValidHour($start) || !$this->isValidHour($end) || $start >= $end) {
+                    continue;
+                }
+
+                $closure = new LaundryClosure();
+                $closure->setLaundry($laundry);
+                $closure->setDay($dayEnum);
+                $closure->setStartTime(\DateTime::createFromFormat('H:i', $start) ?: new \DateTime('00:00:00'));
+                $closure->setEndTime(\DateTime::createFromFormat('H:i', $end) ?: new \DateTime('00:00:00'));
+                $closure->setCreatedAt($now);
+                $closure->setUpdatedAt($now);
+
+                $manager->persist($closure);
+            }
+        }
+    }
+
+    private function isValidHour(string $value): bool
+    {
+        return (bool) preg_match('/^(?:[01]\\d|2[0-3]):[0-5]\\d$/', $value);
     }
 
     private function findOneOrFail(
