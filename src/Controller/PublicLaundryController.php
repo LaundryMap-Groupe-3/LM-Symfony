@@ -59,10 +59,19 @@ class PublicLaundryController extends AbstractController
             'isOpen' => $this->isLaundryOpenNow($laundry),
             'logo' => $logo && method_exists($logo, 'getLocation') ? $logo->getLocation() : null,
             'createdAt' => $laundry->getCreatedAt()?->format(DATE_ATOM),
+            'equipment' => array_map(function ($eq) {
+                return [
+                    'id'       => $eq->getId(),
+                    'name'     => $eq->getName(),
+                    'type'     => $eq->getType(),
+                    'capacity' => $eq->getCapacity(),
+                    'price'    => $eq->getPrice(),
+                    'duration' => $eq->getDuration(),
+                ];
+            }, $laundry->getLaundryEquipments()->toArray()),
             'medias' => $laundry->getLaundryMedias()
                 ? array_map(function ($laundryMedia) {
                     $media = $laundryMedia->getMedia();
-
                     return [
                         'id' => method_exists($media, 'getId') ? $media->getId() : null,
                         'location' => method_exists($media, 'getLocation') ? $media->getLocation() : null,
@@ -232,7 +241,7 @@ class PublicLaundryController extends AbstractController
         $hasScheduleToday = false;
 
         foreach ($laundry->getLaundryClosures() as $closure) {
-            if (!$closure->getDay()) continue; // 🔒 sécurité
+            if (!$closure->getDay()) continue; 
 
             if ($closure->getDay()->value !== $currentDay) continue;
 
