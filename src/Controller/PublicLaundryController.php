@@ -3,12 +3,9 @@
 namespace App\Controller;
 
 use App\Entity\Laundry;
-use App\Entity\LaundryNote;
-use App\Entity\User;
 use App\Enum\LaundryStatusEnum;
 use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -147,71 +144,6 @@ class PublicLaundryController extends AbstractController
                 'limit' => $limit,
             ],
         ]);
-    }
-
-    #[Route('/api/laundries/{id}/reviews', name: 'api_public_laundries_reviews_create', methods: ['POST'], requirements: ['id' => '\\d+'])]
-    public function createReview(int $id, Request $request, LaundryRepository $laundryRepository, EntityManagerInterface $entityManager): JsonResponse
-    {
-        $laundry = $laundryRepository->find($id);
-
-        if (!$laundry || $laundry->getDeletedAt() !== null || $laundry->getStatus() !== LaundryStatusEnum::APPROVED) {
-            return $this->json(['error' => 'not_found'], 404);
-        }
-
-        $user = $this->getUser();
-        if (!$user instanceof User) {
-            return $this->json(['error' => 'errors.not_authenticated'], 401);
-        }
-
-        $payload = json_decode((string) $request->getContent(), true);
-        if (!is_array($payload)) {
-            return $this->json(['error' => 'invalid_json'], 400);
-        }
-
-        $rating = (int) ($payload['rating'] ?? 0);
-        $comment = trim((string) ($payload['comment'] ?? ''));
-
-        if ($rating < 1 || $rating > 5) {
-            return $this->json(['error' => 'invalid_rating'], 400);
-        }
-
-        if ($comment === '') {
-            return $this->json(['error' => 'comment_required'], 400);
-        }
-
-        if (mb_strlen($comment) > 500) {
-            return $this->json(['error' => 'comment_too_long'], 400);
-        }
-
-        $now = new \DateTimeImmutable();
-
-        $note = new LaundryNote();
-        $note->setLaundry($laundry);
-        $note->setUser($user);
-        $note->setRating($rating);
-        $note->setRatedAt($now);
-        $note->setComment($comment);
-        $note->setCommentedAt($now);
-
-        $entityManager->persist($note);
-        $entityManager->flush();
-
-        $firstName = trim((string) ($user->getFirstName() ?? ''));
-        $lastName = trim((string) ($user->getLastName() ?? ''));
-        $author = 'Anonyme';
-        if ($firstName !== '' || $lastName !== '') {
-            $author = trim($firstName . ' ' . ($lastName !== '' ? mb_strtoupper($lastName) : ''));
-        }
-
-        return $this->json([
-            'id' => $note->getId(),
-            'author' => $author,
-            'rating' => $note->getRating(),
-            'comment' => $note->getComment(),
-            'commentedAt' => $note->getCommentedAt()?->format(DATE_ATOM),
-            'response' => $note->getResponse(),
-            'respondedAt' => $note->getRespondedAt()?->format(DATE_ATOM),
-        ], 201);
     }
 
     #[Route('/api/laundries/nearby', name: 'api_public_laundries_nearby', methods: ['GET'])]
