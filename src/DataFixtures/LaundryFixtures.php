@@ -439,19 +439,14 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         }
 
         $favorite1 = new LaundryFavorite();
-        $favorite1->setLaundry($laundry1);
+        $favorite1->setLaundry($laundry2);
         $favorite1->setUser($user1);
         $manager->persist($favorite1);
 
         $favorite2 = new LaundryFavorite();
         $favorite2->setLaundry($laundry2);
-        $favorite2->setUser($user1);
+        $favorite2->setUser($user2);
         $manager->persist($favorite2);
-
-        $favorite3 = new LaundryFavorite();
-        $favorite3->setLaundry($laundry2);
-        $favorite3->setUser($user2);
-        $manager->persist($favorite3);
 
         $note1 = new LaundryNote();
         $note1->setLaundry($laundry1);
