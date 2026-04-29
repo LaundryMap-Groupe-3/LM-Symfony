@@ -12,6 +12,7 @@ class LaundryFavorite
     #[ORM\Id]
     #[ORM\ManyToOne(inversedBy: 'laundryFavorites')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['favorite-laundry:read'])]
     private Laundry $laundry;
 
     #[ORM\Id]

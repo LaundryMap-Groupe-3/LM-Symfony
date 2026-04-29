@@ -16,35 +16,35 @@ class Address
     private int $id;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private string $address;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private string $street;
 
     #[ORM\Column]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private int $postalCode;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private string $city;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private string $country;
 
     #[ORM\Column(type: 'float', nullable: true)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?float $latitude = null;
 
     #[ORM\Column(type: 'float', nullable: true)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?float $longitude = null;
 
     #[ORM\Column(type: 'string', enumType: GeolocalizationStatusEnum::class)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private GeolocalizationStatusEnum $geolocalizationStatus;
 
     public function getId(): int

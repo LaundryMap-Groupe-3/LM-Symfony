@@ -15,7 +15,7 @@ class Laundry
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundries')]
@@ -24,7 +24,7 @@ class Laundry
     private Professional $professional;
 
     #[ORM\Column(type: 'string', enumType: LaundryStatusEnum::class)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private LaundryStatusEnum $status;
 
     #[ORM\Column(nullable: true)]
@@ -34,36 +34,36 @@ class Laundry
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private Address $address;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?Media $logo = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private string $establishmentName;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?string $contactEmail = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?string $description = null;
 
     #[ORM\Column(type: 'datetime')]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private \DateTimeInterface $createdAt;
 
     #[ORM\Column(type: 'datetime')]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private \DateTimeInterface $updatedAt;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?\DateTimeInterface $deletedAt = null;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryFavorite::class)]
@@ -79,7 +79,7 @@ class Laundry
     private Collection $laundryMedias;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryNote::class)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private Collection $laundryNotes;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryService::class)]
@@ -87,7 +87,7 @@ class Laundry
     private Collection $laundryServices;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryClosure::class)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private Collection $laundryClosures;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryExceptionalClosure::class)]
