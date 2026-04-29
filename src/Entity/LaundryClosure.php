@@ -13,7 +13,7 @@ class LaundryClosure
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundryClosures')]
@@ -21,23 +21,23 @@ class LaundryClosure
     private Laundry $laundry;
 
     #[ORM\Column(type: 'string', enumType: DayOfWeekEnum::class)]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private DayOfWeekEnum $day;
 
     #[ORM\Column(type: 'datetime')]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private \DateTimeInterface $createdAt;
 
     #[ORM\Column(type: 'datetime')]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private \DateTimeInterface $updatedAt;
 
     #[ORM\Column(type: 'time')]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private \DateTimeInterface $startTime;
 
     #[ORM\Column(type: 'time')]
-    #[Groups(['laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private \DateTimeInterface $endTime;
 
     public function getId(): int
