@@ -4,7 +4,12 @@ namespace App\Controller;
 
 use App\Entity\Admin;
 use App\Entity\Laundry;
+use App\Entity\LaundryFavorite;
+use App\Entity\User;
+use App\Repository\LaundryFavoriteRepository;
 use App\Repository\LaundryRepository;
+use App\Repository\LaundryNoteRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,14 +20,17 @@ use Symfony\Component\Serializer\SerializerInterface;
 class LaundryController extends AbstractController
 {
     public function __construct(
-        private SerializerInterface $serializer
+        private SerializerInterface $serializer,
+        private LaundryRepository $laundryRepository,
+        private EntityManagerInterface $entityManager,
+        private LaundryFavoriteRepository $favoriteLaundryRepository,
     ) {}
     
     #[Route('/api/admin/laundry/prending', name: 'api_admin_laundry_pending', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getPendingProfessionals(
         Request $request,
-        LaundryRepository $laundryRepository
+        LaundryRepository $laundryRepository,
     ): JsonResponse
     {
         try {
@@ -55,5 +63,130 @@ class LaundryController extends AbstractController
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    #[Route('api/laundry/{id}/favorite/add', name: 'laundry_favorite_add', methods: ['POST'])]
+    public function laundryAddFavorite(int $id): JsonResponse
+    {
+        $user = $this->getUser();
+        
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $laundry= $this->laundryRepository->find($id);
+
+        if (!$laundry) {
+            return $this->json(['error' => 'error.laundry_not_found'], 404);
+        }
+
+        $existing = $this->favoriteLaundryRepository->findOneBy([
+            'user' => $user,
+            'laundry' => $laundry,
+        ]);
+
+        if($existing) {
+            return $this->json(['error' => 'error.laundry_already_in_favorites'], 409);
+        }
+
+        try {
+            $favoriteLaundry = new LaundryFavorite();
+            $favoriteLaundry->setLaundry($laundry);
+            $favoriteLaundry->setUser($user);
+
+            $this->entityManager->persist($favoriteLaundry);
+            $this->entityManager->flush();
+
+            return $this->json(['message' => 'laundry_favorite.add_success'], 201);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 'errors.during_add_favorite_laundry',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('api/laundry/{id}/favorite/remove', name: 'laundry_favorite_remove', methods: ['POST'])]
+    public function laundryRemoveFavorite(int $id): JsonResponse
+    {
+        $user = $this->getUser();
+        
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $laundry= $this->laundryRepository->find($id);
+
+        if (null === $laundry) {
+            return $this->json(['error' => 'error.laundry_not_found'], 404);
+        }
+
+        $existing = $this->favoriteLaundryRepository->findOneBy([
+            'user' => $user,
+            'laundry' => $laundry,
+        ]);
+
+        if (!$existing) {
+            return $this->json(['error' => 'error.laundry_not_found_in_favorites'], 404);
+        }
+
+        try {
+            $this->entityManager->remove($existing);
+            $this->entityManager->flush();
+
+            return $this->json(['message' => 'laundry_favorite.remove_success'], 200);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 'errors.during_remove_favorite_laundry',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/api/laundries', name: 'api_laundries', methods: ['GET'])]
+    public function getAllLaundries(LaundryRepository $laundryRepository, LaundryNoteRepository $laundryNoteRepository): JsonResponse
+    {
+        $laundries = $laundryRepository->findBy(['deletedAt' => null]);
+        $result = [];
+        $laundryIds = [];
+        foreach ($laundries as $laundry) {
+            $address = $laundry->getAddress();
+            $status = $laundry->getStatus()?->value ?? '';
+            $result[] = [
+                'id' => $laundry->getId(),
+                'establishmentName' => $laundry->getEstablishmentName() ?? '',
+                'status' => $status,
+                'address' => $address?->getAddress() ?? '',
+                'postalCode' => $address?->getPostalCode() ?? '',
+                'city' => $address?->getCity() ?? '',
+                'latitude' => $address?->getLatitude() ?? null,
+                'longitude' => $address?->getLongitude() ?? null,
+                'createdAt' => $laundry->getCreatedAt()?->format('c') ?? '',
+                'updatedAt' => $laundry->getUpdatedAt()?->format('c') ?? '',
+            ];
+            $laundryIds[] = $laundry->getId();
+        }
+
+        // Calcul via le repository
+        $averageNote = null;
+        $reviewCount = 0;
+        if (count($laundryIds) > 0) {
+            $stats = $laundryNoteRepository->getAverageRatingAndCountByLaundryIds($laundryIds);
+            if ($stats && $stats['avg_rating'] !== null) {
+                $averageNote = round((float)$stats['avg_rating'], 2);
+                $reviewCount = (int)$stats['review_count'];
+            }
+        }
+
+        $stats = [
+            'all' => count($laundryIds),
+            'averageNote' => $averageNote,
+            'reviewCount' => $reviewCount,
+        ];
+
+        return $this->json([
+            'laundries' => $result,
+            'stats' => $stats
+        ]);
     }
 }
