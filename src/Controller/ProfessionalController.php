@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Address;
 use App\Entity\Laundry;
 use App\Entity\LaundryClosure;
+use App\Entity\LaundryNote;
 use App\Entity\LaundryEquipment;
 use App\Entity\LaundryMedia;
 use App\Entity\LaundryPayment;
@@ -341,6 +342,90 @@ class ProfessionalController extends AbstractController
         return $this->json($this->formatLaundry($laundry));
     }
 
+    #[Route('/api/professional/laundries/{id}/reviews', name: 'api_professional_laundry_reviews', methods: ['GET'])]
+    public function getLaundryReviews(int $id, EntityManagerInterface $entityManager, LaundryNoteRepository $laundryNoteRepository): JsonResponse
+    {
+        $professional = $this->getCurrentProfessional($entityManager);
+        if ($professional === null) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        $laundry = $entityManager->getRepository(Laundry::class)->find($id);
+        if (
+            !$laundry
+            || $laundry->getProfessional()?->getId() !== $professional->getId()
+            || $laundry->getDeletedAt() !== null
+        ) {
+            return $this->json(['error' => 'errors.laundry_not_found'], 404);
+        }
+
+        $notes = $laundryNoteRepository->findPublicReviewsByLaundryId((int) $laundry->getId(), 50);
+        $reviews = array_map(fn (LaundryNote $note): array => $this->formatLaundryReview($note), $notes);
+
+        return $this->json([
+            'laundryId' => $laundry->getId(),
+            'reviews' => $reviews,
+            'meta' => [
+                'count' => count($reviews),
+            ],
+        ]);
+    }
+
+    #[Route('/api/professional/laundries/{laundryId}/reviews/{reviewId}/response', name: 'api_professional_laundry_review_response', methods: ['PUT'])]
+    public function updateLaundryReviewResponse(
+        int $laundryId,
+        int $reviewId,
+        Request $request,
+        EntityManagerInterface $entityManager,
+        LaundryNoteRepository $laundryNoteRepository
+    ): JsonResponse {
+        $professional = $this->getCurrentProfessional($entityManager);
+        if ($professional === null) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        $laundry = $entityManager->getRepository(Laundry::class)->find($laundryId);
+        if (
+            !$laundry
+            || $laundry->getProfessional()?->getId() !== $professional->getId()
+            || $laundry->getDeletedAt() !== null
+        ) {
+            return $this->json(['error' => 'errors.laundry_not_found'], 404);
+        }
+
+        $review = $laundryNoteRepository->find($reviewId);
+        if (
+            !$review
+            || $review->getLaundry()->getId() !== $laundry->getId()
+            || $review->getCommentDeletedAt() !== null
+            || trim((string) $review->getComment()) === ''
+        ) {
+            return $this->json(['error' => 'errors.laundry_not_found'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            return $this->json(['error' => 'errors.invalid_payload'], 400);
+        }
+
+        $response = trim((string) ($payload['response'] ?? ''));
+        if ($response === '') {
+            return $this->json(['errors' => ['response' => 'validation.response_required']], 400);
+        }
+
+        if (mb_strlen($response) > 500) {
+            return $this->json(['errors' => ['response' => 'validation.response_max_length']], 400);
+        }
+
+        $review->setResponse($response);
+        $review->setRespondedAt(new \DateTime());
+        $entityManager->flush();
+
+        return $this->json([
+            'review' => $this->formatLaundryReview($review),
+        ]);
+    }
+
     #[Route('/api/professional/laundries/{id}', name: 'api_professional_laundry_update', methods: ['PUT'])]
     public function updateLaundry(int $id, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
@@ -482,6 +567,28 @@ class ProfessionalController extends AbstractController
         }
 
         return $entityManager->getRepository(Professional::class)->findOneBy(['user' => $user]);
+    }
+
+    private function formatLaundryReview(LaundryNote $note): array
+    {
+        $user = $note->getUser();
+        $firstName = trim((string) ($user->getFirstName() ?? ''));
+        $lastName = trim((string) ($user->getLastName() ?? ''));
+        $author = 'Anonyme';
+
+        if ($firstName !== '' || $lastName !== '') {
+            $author = trim($firstName . ' ' . ($lastName !== '' ? mb_strtoupper($lastName) : ''));
+        }
+
+        return [
+            'id' => $note->getId(),
+            'author' => $author,
+            'rating' => $note->getRating(),
+            'comment' => $note->getComment(),
+            'commentedAt' => $note->getCommentedAt()?->format(DATE_ATOM),
+            'response' => $note->getResponse(),
+            'respondedAt' => $note->getRespondedAt()?->format(DATE_ATOM),
+        ];
     }
 
     private function validateLaundryPayload(array $payload, bool $isCreate): array
