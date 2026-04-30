@@ -15,4 +15,23 @@ class OffensiveWordRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, OffensiveWord::class);
     }
+
+    public function findOffensiveLabelInText(string $text): ?string
+    {
+        $normalizedText = mb_strtolower($text);
+
+        foreach ($this->findBy([], ['label' => 'ASC']) as $offensiveWord) {
+            $label = trim((string) $offensiveWord->getLabel());
+            if ($label === '') {
+                continue;
+            }
+
+            $pattern = '/(^|[^\p{L}\p{N}_])' . preg_quote(mb_strtolower($label), '/') . '($|[^\p{L}\p{N}_])/iu';
+            if (preg_match($pattern, $normalizedText) === 1) {
+                return $label;
+            }
+        }
+
+        return null;
+    }
 }

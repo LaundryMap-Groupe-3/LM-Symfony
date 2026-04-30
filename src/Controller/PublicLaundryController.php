@@ -3,9 +3,13 @@
 namespace App\Controller;
 
 use App\Entity\Laundry;
+use App\Entity\LaundryNote;
+use App\Entity\User;
 use App\Enum\LaundryStatusEnum;
+use App\Repository\OffensiveWordRepository;
 use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -115,25 +119,7 @@ class PublicLaundryController extends AbstractController
             }
         }
 
-        $reviews = array_map(static function ($note) {
-            $user = $note->getUser();
-            $firstName = trim((string) ($user->getFirstName() ?? ''));
-            $lastName = trim((string) ($user->getLastName() ?? ''));
-            $author = 'Anonyme';
-            if ($firstName !== '' || $lastName !== '') {
-                $author = trim($firstName . ' ' . ($lastName !== '' ? mb_strtoupper($lastName) : ''));
-            }
-
-            return [
-                'id' => $note->getId(),
-                'author' => $author,
-                'rating' => $note->getRating(),
-                'comment' => $note->getComment(),
-                'commentedAt' => $note->getCommentedAt()?->format(DATE_ATOM),
-                'response' => $note->getResponse(),
-                'respondedAt' => $note->getRespondedAt()?->format(DATE_ATOM),
-            ];
-        }, $notes);
+        $reviews = array_map(fn (LaundryNote $note): array => $this->formatReview($note), $notes);
 
         return $this->json([
             'laundryId' => $laundry->getId(),
@@ -144,6 +130,64 @@ class PublicLaundryController extends AbstractController
                 'limit' => $limit,
             ],
         ]);
+    }
+
+    #[Route('/api/laundries/{id}/reviews', name: 'api_public_laundries_reviews_create', methods: ['POST'], requirements: ['id' => '\\d+'])]
+    public function createReview(
+        int $id,
+        Request $request,
+        EntityManagerInterface $entityManager,
+        LaundryRepository $laundryRepository,
+        OffensiveWordRepository $offensiveWordRepository
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'errors.not_authenticated'], 401);
+        }
+
+        $laundry = $laundryRepository->find($id);
+        if (!$laundry || $laundry->getDeletedAt() !== null || $laundry->getStatus() !== LaundryStatusEnum::APPROVED) {
+            return $this->json(['error' => 'not_found'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            return $this->json(['error' => 'errors.invalid_payload'], 400);
+        }
+
+        $rating = (int) ($payload['rating'] ?? 0);
+        $comment = trim((string) ($payload['comment'] ?? ''));
+
+        $errors = [];
+
+        if ($rating < 1 || $rating > 5) {
+            $errors['rating'] = 'validation.rating_invalid';
+        }
+
+        if ($comment === '') {
+            $errors['comment'] = 'validation.comment_required';
+        } elseif (mb_strlen($comment) > 500) {
+            $errors['comment'] = 'validation.comment_max_length';
+        } elseif ($offensiveWordRepository->findOffensiveLabelInText($comment) !== null) {
+            $errors['comment'] = 'validation.offensive_comment';
+        }
+
+        if (!empty($errors)) {
+            return $this->json(['errors' => $errors], 400);
+        }
+
+        $review = new LaundryNote();
+        $review->setLaundry($laundry);
+        $review->setUser($user);
+        $review->setRating($rating);
+        $review->setRatedAt(new \DateTime());
+        $review->setComment($comment);
+        $review->setCommentedAt(new \DateTime());
+
+        $entityManager->persist($review);
+        $entityManager->flush();
+
+        return $this->json($this->formatReview($review), 201);
     }
 
     #[Route('/api/laundries/nearby', name: 'api_public_laundries_nearby', methods: ['GET'])]
@@ -322,5 +366,27 @@ class PublicLaundryController extends AbstractController
         }
 
         return !$hasScheduleToday;
+    }
+
+    private function formatReview(LaundryNote $note): array
+    {
+        $user = $note->getUser();
+        $firstName = trim((string) ($user->getFirstName() ?? ''));
+        $lastName = trim((string) ($user->getLastName() ?? ''));
+        $author = 'Anonyme';
+
+        if ($firstName !== '' || $lastName !== '') {
+            $author = trim($firstName . ' ' . ($lastName !== '' ? mb_strtoupper($lastName) : ''));
+        }
+
+        return [
+            'id' => $note->getId(),
+            'author' => $author,
+            'rating' => $note->getRating(),
+            'comment' => $note->getComment(),
+            'commentedAt' => $note->getCommentedAt()?->format(DATE_ATOM),
+            'response' => $note->getResponse(),
+            'respondedAt' => $note->getRespondedAt()?->format(DATE_ATOM),
+        ];
     }
 }

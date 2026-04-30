@@ -4,11 +4,13 @@ namespace App\Controller;
 
 use App\Entity\Admin;
 use App\Entity\LaundryInteractionHistory;
+use App\Entity\OffensiveWord;
 use App\Entity\ProfessionalInteractionHistory;
 use App\Enum\LaundryStatusEnum;
 use App\Enum\InteractionActionEnum;
 use App\Enum\ProfessionalStatusEnum;
 use App\Repository\LaundryRepository;
+use App\Repository\OffensiveWordRepository;
 use App\Repository\ProfessionalRepository;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -510,5 +512,89 @@ class AdminController extends AbstractController
         $em->flush();
 
         return $this->json(['message' => 'Laundry rejected successfully']);
+    }
+
+    #[Route('/api/admin/offensive-words', name: 'api_admin_offensive_words_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getOffensiveWords(OffensiveWordRepository $offensiveWordRepository): JsonResponse
+    {
+        $user = $this->getUser();
+        
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $words = $offensiveWordRepository->findBy([], ['label' => 'ASC']);
+        
+        $data = array_map(function ($word) {
+            return [
+                'id' => $word->getId(),
+                'label' => $word->getLabel(),
+            ];
+        }, $words);
+
+        return $this->json([
+            'words' => $data,
+            'count' => count($data),
+        ]);
+    }
+
+    #[Route('/api/admin/offensive-words', name: 'api_admin_offensive_words_create', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function createOffensiveWord(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            return $this->json(['error' => 'errors.invalid_payload'], 400);
+        }
+
+        $label = trim((string) ($payload['label'] ?? ''));
+        
+        if ($label === '') {
+            return $this->json(['errors' => ['label' => 'validation.offensive_word_required']], 400);
+        }
+
+        if (mb_strlen($label) > 255) {
+            return $this->json(['errors' => ['label' => 'validation.offensive_word_max_length']], 400);
+        }
+
+        $word = new OffensiveWord();
+        $word->setLabel($label);
+        
+        $em->persist($word);
+        $em->flush();
+
+        return $this->json([
+            'id' => $word->getId(),
+            'label' => $word->getLabel(),
+        ], 201);
+    }
+
+    #[Route('/api/admin/offensive-words/{id}', name: 'api_admin_offensive_words_delete', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function deleteOffensiveWord(int $id, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $word = $em->getRepository(OffensiveWord::class)->find($id);
+        
+        if (!$word) {
+            return $this->json(['error' => 'errors.not_found'], 404);
+        }
+
+        $em->remove($word);
+        $em->flush();
+
+        return $this->json(['message' => 'Offensive word deleted successfully']);
     }
 }
