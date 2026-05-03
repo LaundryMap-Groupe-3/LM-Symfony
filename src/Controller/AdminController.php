@@ -139,6 +139,70 @@ class AdminController extends AbstractController
         ]);
     }
 
+    #[Route('/api/admin/users/count', name: 'api_admin_users_count', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getTotalUsersCount(
+        
+        \App\Repository\UserRepository $userRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        try {
+            $total = (int) $userRepository->count([]);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'errors.fetch_error'], 500);
+        }
+
+        return $this->json(['count' => $total]);
+    }
+
+    #[Route('/api/admin/laundries/count', name: 'api_admin_laundries_count', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getTotalLaundriesCount(
+        LaundryRepository $laundryRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        try {
+            $total = (int) $laundryRepository->count([]);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'errors.fetch_error'], 500);
+        }
+
+        return $this->json(['count' => $total]);
+    }
+
+    #[Route('/api/admin/reviews/reports/count', name: 'api_admin_reviews_reports_count', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getTotalReportsCount(
+        \App\Repository\LaundryNoteReportRepository $laundryNoteReportRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        try {
+            $total = (int) $laundryNoteReportRepository->count([]);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'errors.fetch_error'], 500);
+        }
+
+        return $this->json(['count' => $total]);
+    }
+
     #[Route('/api/admin/laundries/pending', name: 'api_admin_laundries_pending', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getPendingLaundries(

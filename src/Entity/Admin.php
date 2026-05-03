@@ -23,6 +23,9 @@ class Admin implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255)]
     private string $password;
 
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $lastLoginAt = null;
+
     #[ORM\OneToMany(mappedBy: 'admin', targetEntity: UserInteractionHistory::class)]
     private Collection $userInteractionHistories;
 
@@ -80,6 +83,17 @@ class Admin implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): static
     {
         $this->password = $password;
+        return $this;
+    }
+
+    public function getLastLoginAt(): ?\DateTimeInterface
+    {
+        return $this->lastLoginAt;
+    }
+
+    public function setLastLoginAt(?\DateTimeInterface $lastLoginAt): static
+    {
+        $this->lastLoginAt = $lastLoginAt;
         return $this;
     }
 

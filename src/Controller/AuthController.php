@@ -327,6 +327,8 @@ class AuthController extends AbstractController
 
             // Admin peut se connecter directement
             $token = $jwtManager->create($admin);
+            $admin->setLastLoginAt(new \DateTime());
+            $entityManager->flush();
             return $this->json([
                 'token' => $token,
                 'user' => [
@@ -484,12 +486,18 @@ class AuthController extends AbstractController
         }
 
         if ($user instanceof Admin) {
-            return $this->json([
+            $response = [
                 'id' => $user->getId(),
                 'email' => $user->getEmail(),
                 'type' => 'admin',
                 'roles' => $user->getRoles(),
-            ]);
+            ];
+
+            if (method_exists($user, 'getLastLoginAt')) {
+                $response['lastLoginAt'] = $user->getLastLoginAt()?->format('c');
+            }
+
+            return $this->json($response);
         }
 
         if ($user instanceof User) {
