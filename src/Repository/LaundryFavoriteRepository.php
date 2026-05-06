@@ -20,8 +20,12 @@ class LaundryFavoriteRepository extends ServiceEntityRepository
     public function getFavoritesLaundriesByUser(int $offset, int $limit, User $user): array
     {
         return $this->createQueryBuilder('fl')
-            ->addSelect('l')
+            ->addSelect('l', 'address', 'logo', 'closures', 'exceptionalClosures')
             ->leftJoin('fl.laundry', 'l')
+            ->leftJoin('l.address', 'address')
+            ->leftJoin('l.logo', 'logo')
+            ->leftJoin('l.laundryClosures', 'closures')
+            ->leftJoin('l.laundryExceptionalClosures', 'exceptionalClosures')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->where('fl.user = :user')

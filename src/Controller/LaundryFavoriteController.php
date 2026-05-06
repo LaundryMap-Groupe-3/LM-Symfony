@@ -6,18 +6,19 @@ use App\Entity\Laundry;
 use App\Entity\LaundryFavorite;
 use App\Entity\User;
 use App\Repository\LaundryFavoriteRepository;
+use App\Repository\LaundryNoteRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class LaundryFavoriteController extends AbstractController
 {
     public function __construct(
-        private SerializerInterface $serializer
+        private NormalizerInterface $serializer
     ) {}
 
     #[Route('/api/laundries/{id}/favorite/add', name: 'api_laundry_add_favorite', methods: ['POST'])]
@@ -52,7 +53,11 @@ class LaundryFavoriteController extends AbstractController
 
     #[Route('/api/user/favorites', name: 'api_user_favorites', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function getFavorites(LaundryFavoriteRepository $favoriteRepository, Request $request): JsonResponse
+    public function getFavorites(
+        LaundryFavoriteRepository $favoriteRepository,
+        LaundryNoteRepository $laundryNoteRepository,
+        Request $request
+    ): JsonResponse
     {
         try {
             $user = $this->getUser();
@@ -67,7 +72,26 @@ class LaundryFavoriteController extends AbstractController
             $favorites = $favoriteRepository->getFavoritesLaundriesByUser($offset, $limit, $user);
             $total = $favoriteRepository->countFavoritesLaundriesByUser($user);
 
-            $data = $this->serializer->normalize($favorites, null,['groups' => ['favorite-laundry:read']]);
+            $laundries = array_map(
+                static fn (LaundryFavorite $favorite): Laundry => $favorite->getLaundry(),
+                $favorites
+            );
+
+            $laundryIds = array_map(static fn (Laundry $laundry): int => $laundry->getId(), $laundries);
+            $ratings = $laundryNoteRepository->getAverageRatingAndCountByLaundryIdsGrouped($laundryIds);
+            $ratingById = [];
+            $reviewCountById = [];
+
+            foreach ($laundryIds as $laundryId) {
+                $ratingById[$laundryId] = $ratings[$laundryId]['avg_rating'] ?? null;
+                $reviewCountById[$laundryId] = $ratings[$laundryId]['review_count'] ?? 0;
+            }
+
+            $data = $this->serializer->normalize($laundries, null, [
+                'laundry_card' => true,
+                'rating_by_id' => $ratingById,
+                'review_count_by_id' => $reviewCountById,
+            ]);
 
             return JsonResponse::fromJsonString(
                 json_encode([
