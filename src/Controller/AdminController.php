@@ -3,12 +3,15 @@
 namespace App\Controller;
 
 use App\Entity\Admin;
+use App\Entity\LaundryNote;
 use App\Entity\LaundryInteractionHistory;
 use App\Entity\OffensiveWord;
 use App\Entity\ProfessionalInteractionHistory;
 use App\Enum\LaundryStatusEnum;
 use App\Enum\InteractionActionEnum;
 use App\Enum\ProfessionalStatusEnum;
+use App\Repository\LaundryNoteReportRepository;
+use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
 use App\Repository\OffensiveWordRepository;
 use App\Repository\ProfessionalRepository;
@@ -201,6 +204,172 @@ class AdminController extends AbstractController
         }
 
         return $this->json(['count' => $total]);
+    }
+
+    #[Route('/api/admin/reviews/reports', name: 'api_admin_reviews_reports_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getReportedReviews(
+        Request $request,
+        LaundryNoteReportRepository $laundryNoteReportRepository,
+        LaundryNoteRepository $laundryNoteRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+
+        $total = (int) $laundryNoteReportRepository->createQueryBuilder('r')
+            ->select('COUNT(DISTINCT IDENTITY(r.laundryNote))')
+            ->join('r.laundryNote', 'n')
+            ->andWhere('n.comment IS NOT NULL')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $groupedRows = $laundryNoteReportRepository->createQueryBuilder('r')
+            ->select('IDENTITY(r.laundryNote) AS reviewId', 'COUNT(r.user) AS reportsCount', 'MAX(r.createdAt) AS latestReportAt')
+            ->join('r.laundryNote', 'n')
+            ->andWhere('n.comment IS NOT NULL')
+            ->groupBy('r.laundryNote')
+            ->orderBy('MAX(r.createdAt)', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getArrayResult();
+
+        $reviewIds = array_map(static fn (array $row): int => (int) $row['reviewId'], $groupedRows);
+        $reviews = empty($reviewIds) ? [] : $laundryNoteRepository->findBy(['id' => $reviewIds]);
+
+        $reviewsById = [];
+        foreach ($reviews as $review) {
+            $reviewsById[$review->getId()] = $review;
+        }
+
+        $data = [];
+        foreach ($groupedRows as $row) {
+            $reviewId = (int) $row['reviewId'];
+            $review = $reviewsById[$reviewId] ?? null;
+
+            if (!$review instanceof LaundryNote) {
+                continue;
+            }
+
+            $reasons = [];
+            $reportComments = [];
+
+            foreach ($review->getLaundryNoteReports() as $report) {
+                $reasonKey = $report->getReason()->value;
+                $reasons[$reasonKey] = ($reasons[$reasonKey] ?? 0) + 1;
+
+                $reportComment = trim((string) ($report->getComment() ?? ''));
+                if ($reportComment !== '') {
+                    $reportComments[] = $reportComment;
+                }
+            }
+
+            $reviewAuthor = $review->getUser();
+            $laundry = $review->getLaundry();
+
+            $data[] = [
+                'reviewId' => $review->getId(),
+                'comment' => $review->getComment(),
+                'rating' => $review->getRating(),
+                'commentedAt' => $review->getCommentedAt()?->format('c'),
+                'reportsCount' => (int) $row['reportsCount'],
+                'latestReportAt' => $row['latestReportAt'],
+                'reasons' => $reasons,
+                'reportComments' => array_values(array_unique($reportComments)),
+                'author' => [
+                    'id' => $reviewAuthor->getId(),
+                    'firstName' => $reviewAuthor->getFirstName(),
+                    'lastName' => $reviewAuthor->getLastName(),
+                    'email' => $reviewAuthor->getEmail(),
+                ],
+                'laundry' => [
+                    'id' => $laundry->getId(),
+                    'establishmentName' => $laundry->getEstablishmentName(),
+                ],
+            ];
+        }
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
+    }
+
+    #[Route('/api/admin/reviews/{id}/dismiss-reports', name: 'api_admin_reviews_dismiss_reports', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function dismissReviewReports(
+        int $id,
+        LaundryNoteRepository $laundryNoteRepository,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $review = $laundryNoteRepository->find($id);
+        if (!$review instanceof LaundryNote) {
+            return $this->json(['error' => 'errors.not_found'], 404);
+        }
+
+        foreach ($review->getLaundryNoteReports() as $report) {
+            $em->remove($report);
+        }
+
+        $em->flush();
+
+        return $this->json(['message' => 'Review reports dismissed successfully']);
+    }
+
+    #[Route('/api/admin/reviews/{id}/delete-comment', name: 'api_admin_reviews_delete_comment', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function deleteReportedReviewComment(
+        int $id,
+        Request $request,
+        LaundryNoteRepository $laundryNoteRepository,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $review = $laundryNoteRepository->find($id);
+        if (!$review instanceof LaundryNote) {
+            return $this->json(['error' => 'errors.not_found'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        $reason = trim((string) (($payload['reason'] ?? 'Commentaire supprimé par un administrateur')));
+
+        $review->setCommentDeletedReason($reason);
+        $review->setCommentDeletedAt(new \DateTime());
+        $review->setComment(null);
+
+        foreach ($review->getLaundryNoteReports() as $report) {
+            $em->remove($report);
+        }
+
+        $em->flush();
+
+        return $this->json(['message' => 'Review comment deleted successfully']);
     }
 
     #[Route('/api/admin/laundries/pending', name: 'api_admin_laundries_pending', methods: ['GET'])]
