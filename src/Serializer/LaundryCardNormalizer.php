@@ -4,12 +4,29 @@ namespace App\Serializer;
 
 use App\Entity\Laundry;
 use App\Repository\LaundryNoteRepository;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class LaundryCardNormalizer implements NormalizerInterface
 {
-    public function __construct(private LaundryNoteRepository $laundryNoteRepository)
+    public function __construct(
+        private LaundryNoteRepository $laundryNoteRepository,
+        private RequestStack $requestStack,
+    ) {}
+
+    private function absoluteUrl(?string $path): ?string
     {
+        if ($path === null || $path === '') {
+            return null;
+        }
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+        $request = $this->requestStack->getCurrentRequest();
+        if (!$request) {
+            return $path;
+        }
+        return $request->getSchemeAndHttpHost() . '/' . ltrim($path, '/');
     }
 
     public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
@@ -70,7 +87,7 @@ class LaundryCardNormalizer implements NormalizerInterface
             'address' => $addressData,
             'latitude' => $address?->getLatitude(),
             'longitude' => $address?->getLongitude(),
-            'imageUrl' => $logo?->getLocation(),
+            'imageUrl' => $this->absoluteUrl($logo?->getLocation()),
             'rating' => $rating,
             'reviewCount' => $reviewCount,
             'isOpenNow' => $isOpenNow,

@@ -20,13 +20,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Serializer\SerializerInterface;
 
 class AdminController extends AbstractController
 {
-    public function __construct(
-        private SerializerInterface $serializer
-    ) {}
+    public function __construct() {}
 
     #[Route('/api/admin/profile', name: 'api_admin_profile_get', methods: ['GET'])]
     public function getProfile(): JsonResponse
@@ -57,7 +54,7 @@ class AdminController extends AbstractController
 
         try {
             $total = $professionalRepository->countPendingProfessionals();
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return $this->json(['error' => 'errors.fetch_error'], 500);
         }
 
@@ -318,12 +315,15 @@ class AdminController extends AbstractController
         // Envoyer l'email de refus AVANT la suppression (pour avoir accès aux données du professional)
         $emailService->sendProfessionalRejectionEmail($professional, $reason);
 
-        // Soft delete toutes les blanchisseries associées
+        // Supprimer les laveries (et leurs historiques) avant le professionnel pour éviter les violations FK
         foreach ($professional->getLaundries() as $laundry) {
-            $laundry->setDeletedAt(new \DateTime());
+            foreach ($laundry->getLaundryInteractionHistories() as $laundryInteraction) {
+                $em->remove($laundryInteraction);
+            }
+            $em->remove($laundry);
         }
 
-        // Supprimer les interactions d'historique (orphelins)
+        // Supprimer les interactions d'historique du professionnel (orphelins)
         foreach ($professional->getProfessionalInteractionHistories() as $interaction) {
             $em->remove($interaction);
         }
@@ -492,6 +492,7 @@ class AdminController extends AbstractController
             'establishmentName' => $laundry->getEstablishmentName(),
             'status' => $laundry->getStatus()->value,
             'contactEmail' => $laundry->getContactEmail(),
+            'contactPhone' => $laundry->getProfessional()?->getPhone(),
             'description' => $laundry->getDescription(),
             'createdAt' => $laundry->getCreatedAt()->format('c'),
             'updatedAt' => $laundry->getUpdatedAt()->format('c'),

@@ -40,6 +40,10 @@ class AuthController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $errors = [];
 
+        if (empty($data['acceptCGU'])) {
+            $errors['acceptCGU'] = 'validation.cgu_required';
+        }
+
         // Validation des champs requis
         if (empty($data['email'])) {
             $errors['email'] = 'validation.email_required';
@@ -142,6 +146,10 @@ class AuthController extends AbstractController
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
         $errors = [];
+
+        if (empty($data['acceptCGU'])) {
+            $errors['acceptCGU'] = 'validation.cgu_required';
+        }
 
         // Validation des champs requis
         if (empty($data['email'])) {
@@ -524,19 +532,22 @@ class AuthController extends AbstractController
     public function authGoogle(Request $request, EntityManagerInterface $entityManager, JWTTokenManagerInterface $jwtManager) {
         try {
             $data = json_decode($request->getContent(), true);
-            $googleToken = $data['token'];
+            $googleToken = $data['token'] ?? null;
+
+            if (!$googleToken || !is_string($googleToken)) {
+                return $this->json(['error' => 'errors.missing_token'], 400);
+            }
 
             $googleUser = $this->verifyGoogleToken($googleToken);
 
             if (!$googleUser) {
-                return $this->json(['error' => 'Token invalide'], 401);
+                return $this->json(['error' => 'errors.invalid_token'], 401);
             }
 
             $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $googleUser['email']]);
             if($existingUser) {
                 $token = $jwtManager->create($existingUser);
 
-                // Mettre à jour lastLoginAt
                 $existingUser->setLastLoginAt(new \DateTime());
                 $entityManager->flush();
 
@@ -546,10 +557,11 @@ class AuthController extends AbstractController
                 $user = new User();
 
                 $user->setEmail($googleUser['email'])
-                    ->setLastName($googleUser['family_name'])
-                    ->setFirstName($googleUser['given_name'])
+                    ->setLastName($googleUser['family_name'] ?? '')
+                    ->setFirstName($googleUser['given_name'] ?? '')
                     ->setOauthId($googleUser['sub'])
                     ->setStatus(UserStatusEnum::VERIFIED)
+                    ->setEmailVerifiedAt(new \DateTime())
                     ->setCreatedAt(new \DateTime());
 
                 $entityManager->persist($user);
@@ -578,10 +590,11 @@ class AuthController extends AbstractController
 
     private function verifyGoogleToken($accessToken) {
         $url = 'https://www.googleapis.com/oauth2/v3/userinfo';
-        
+
         $context = stream_context_create([
             'http' => [
                 'header' => "Authorization: Bearer " . $accessToken,
+                'timeout' => 5,
             ]
         ]);
         

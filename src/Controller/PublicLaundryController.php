@@ -70,7 +70,7 @@ class PublicLaundryController extends AbstractController
             $closeAtMinutes = $this->timeStringToMinutes($closeAtRaw);
         }
 
-        $laundries = $laundryRepository
+        $qb = $laundryRepository
             ->createQueryBuilder('l')
             ->leftJoin('l.address', 'a')
             ->leftJoin('l.logo', 'logo')
@@ -92,9 +92,24 @@ class PublicLaundryController extends AbstractController
             ->andWhere('l.deletedAt IS NULL')
             ->andWhere('a.latitude IS NOT NULL')
             ->andWhere('a.longitude IS NOT NULL')
-            ->setParameter('status', LaundryStatusEnum::APPROVED)
-            ->getQuery()
-            ->getResult();
+            ->setParameter('status', LaundryStatusEnum::APPROVED);
+
+        if ($city !== '') {
+            $qb->andWhere('LOWER(a.city) = :city')
+               ->setParameter('city', mb_strtolower($city));
+        }
+
+        if ($query !== '') {
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    'LOWER(l.establishmentName) LIKE :query',
+                    'LOWER(a.address) LIKE :query',
+                    'LOWER(a.city) LIKE :query'
+                )
+            )->setParameter('query', '%' . mb_strtolower($query) . '%');
+        }
+
+        $laundries = $qb->getQuery()->getResult();
 
         $results = [];
         $distanceById = [];
@@ -104,21 +119,6 @@ class PublicLaundryController extends AbstractController
             $address = $laundry->getAddress();
             if (!$address) {
                 continue;
-            }
-
-            $laundryCity = (string) ($address->getCity() ?? '');
-            $laundryAddress = (string) ($address->getAddress() ?? '');
-            $laundryName = (string) ($laundry->getEstablishmentName() ?? '');
-
-            if ($city !== '' && mb_strtolower($laundryCity) !== mb_strtolower($city)) {
-                continue;
-            }
-
-            if ($query !== '') {
-                $haystack = mb_strtolower(trim($laundryName . ' ' . $laundryAddress . ' ' . $laundryCity));
-                if (!str_contains($haystack, mb_strtolower($query))) {
-                    continue;
-                }
             }
 
             $services = [];
