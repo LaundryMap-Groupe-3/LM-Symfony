@@ -69,12 +69,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserInteractionHistory::class)]
     private Collection $userInteractionHistories;
 
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserBan::class)]
+    private Collection $userBans;
+
     public function __construct()
     {
         $this->laundryFavorites = new ArrayCollection();
         $this->laundryNotes = new ArrayCollection();
         $this->laundryNoteReports = new ArrayCollection();
         $this->userInteractionHistories = new ArrayCollection();
+        $this->userBans = new ArrayCollection();
     }
 
     public function getId(): int
@@ -328,5 +332,32 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function eraseCredentials(): void
     {
         // If you store any temporary, sensitive data on the user, clear it here
+    }
+
+    /**
+     * @return Collection<int, UserBan>
+     */
+    public function getUserBans(): Collection
+    {
+        return $this->userBans;
+    }
+
+    public function addUserBan(UserBan $userBan): static
+    {
+        if (!$this->userBans->contains($userBan)) {
+            $this->userBans->add($userBan);
+            $userBan->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeUserBan(UserBan $userBan): static
+    {
+        if ($this->userBans->removeElement($userBan)) {
+            if ($userBan->getUser() === $this) {
+                $userBan->setUser(null);
+            }
+        }
+        return $this;
     }
 }

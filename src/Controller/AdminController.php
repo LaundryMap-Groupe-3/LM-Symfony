@@ -7,6 +7,8 @@ use App\Entity\LaundryNote;
 use App\Entity\LaundryInteractionHistory;
 use App\Entity\OffensiveWord;
 use App\Entity\ProfessionalInteractionHistory;
+use App\Entity\User;
+use App\Entity\UserBan;
 use App\Enum\LaundryStatusEnum;
 use App\Enum\InteractionActionEnum;
 use App\Enum\ProfessionalStatusEnum;
@@ -15,6 +17,8 @@ use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
 use App\Repository\OffensiveWordRepository;
 use App\Repository\ProfessionalRepository;
+use App\Repository\UserBanRepository;
+use App\Repository\UserRepository;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -223,20 +227,47 @@ class AdminController extends AbstractController
         $page = max(1, (int) $request->query->get('page', 1));
         $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
         $offset = ($page - 1) * $limit;
+        $reportedOnly = filter_var($request->query->get('reportedOnly', '1'), FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+        $reportedOnly = $reportedOnly ?? true;
 
-        $total = (int) $laundryNoteReportRepository->createQueryBuilder('r')
-            ->select('COUNT(DISTINCT IDENTITY(r.laundryNote))')
-            ->join('r.laundryNote', 'n')
+        $allQueryBuilder = $laundryNoteRepository->createQueryBuilder('n')
             ->andWhere('n.comment IS NOT NULL')
+            ->andWhere('n.commentDeletedAt IS NULL');
+
+        $reportedQueryBuilder = $laundryNoteRepository->createQueryBuilder('n')
+            ->andWhere('n.comment IS NOT NULL')
+            ->andWhere('n.commentDeletedAt IS NULL')
+            ->join('n.laundryNoteReports', 'r');
+
+        if ($reportedOnly) {
+            $baseQueryBuilder = clone $reportedQueryBuilder;
+        } else {
+            $baseQueryBuilder = clone $allQueryBuilder;
+            $baseQueryBuilder->leftJoin('n.laundryNoteReports', 'r');
+        }
+
+        $totalQueryBuilder = clone ($reportedOnly ? $reportedQueryBuilder : $allQueryBuilder);
+        $total = (int) $totalQueryBuilder
+            ->select('COUNT(DISTINCT n.id)')
             ->getQuery()
             ->getSingleScalarResult();
 
-        $groupedRows = $laundryNoteReportRepository->createQueryBuilder('r')
-            ->select('IDENTITY(r.laundryNote) AS reviewId', 'COUNT(r.user) AS reportsCount', 'MAX(r.createdAt) AS latestReportAt')
-            ->join('r.laundryNote', 'n')
-            ->andWhere('n.comment IS NOT NULL')
-            ->groupBy('r.laundryNote')
-            ->orderBy('MAX(r.createdAt)', 'DESC')
+        $reportedTotal = (int) (clone $reportedQueryBuilder)
+            ->select('COUNT(DISTINCT n.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $groupedQueryBuilder = clone $baseQueryBuilder;
+        $groupedQueryBuilder
+            ->select('n.id AS reviewId', 'COUNT(r.user) AS reportsCount', 'MAX(r.createdAt) AS latestReportAt')
+            ->groupBy('n.id')
+            ->orderBy($reportedOnly ? 'MAX(r.createdAt)' : 'n.commentedAt', 'DESC');
+
+        if ($reportedOnly) {
+            $groupedQueryBuilder->having('COUNT(r.user) > 0');
+        }
+
+        $groupedRows = $groupedQueryBuilder
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->getQuery()
@@ -303,6 +334,7 @@ class AdminController extends AbstractController
                 'page' => $page,
                 'limit' => $limit,
                 'total' => $total,
+                'reported' => $reportedTotal,
                 'pages' => (int) ceil($total / $limit),
             ],
         ]);
@@ -829,5 +861,137 @@ class AdminController extends AbstractController
         $em->flush();
 
         return $this->json(['message' => 'Offensive word deleted successfully']);
+    }
+
+    #[Route('/api/admin/users/{id}/ban', name: 'api_admin_users_ban', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function banUser(
+        int $id,
+        Request $request,
+        UserRepository $userRepository,
+        UserBanRepository $userBanRepository,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $adminUser = $this->getUser();
+
+        if (!$adminUser instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $user = $userRepository->find($id);
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'errors.not_found'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        $isPermanent = (bool) ($payload['isPermanent'] ?? false);
+        $durationDays = (int) ($payload['durationDays'] ?? 30);
+        $reason = trim((string) (($payload['reason'] ?? '')));
+
+        if (empty($reason)) {
+            return $this->json(['error' => 'validation.ban_reason_required'], 400);
+        }
+
+        // Check if user already has an active ban
+        $existingBan = $userBanRepository->findActiveByUser($id);
+        if ($existingBan instanceof UserBan) {
+            return $this->json(['error' => 'errors.user_already_banned'], 400);
+        }
+
+        $ban = new UserBan();
+        $ban->setUser($user);
+        $ban->setAdmin($adminUser);
+        $ban->setReason($reason);
+        $ban->setIsPermanent($isPermanent);
+        $ban->setStartedAt(new \DateTime());
+        $ban->setCreatedAt(new \DateTime());
+
+        if (!$isPermanent) {
+            $endDate = new \DateTime();
+            $endDate->modify("+{$durationDays} days");
+            $ban->setEndedAt($endDate);
+        }
+
+        $em->persist($ban);
+        $em->flush();
+
+        return $this->json([
+            'id' => $ban->getId(),
+            'user' => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'firstName' => $user->getFirstName(),
+                'lastName' => $user->getLastName(),
+            ],
+            'isPermanent' => $ban->isIsPermanent(),
+            'startedAt' => $ban->getStartedAt()->format('c'),
+            'endedAt' => $ban->getEndedAt()?->format('c'),
+            'reason' => $ban->getReason(),
+        ], 201);
+    }
+
+    #[Route('/api/admin/users/{id}/unban', name: 'api_admin_users_unban', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function unbanUser(
+        int $id,
+        UserBanRepository $userBanRepository,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $ban = $userBanRepository->findActiveByUser($id);
+        if (!$ban instanceof UserBan) {
+            return $this->json(['error' => 'errors.no_active_ban'], 404);
+        }
+
+        $em->remove($ban);
+        $em->flush();
+
+        return $this->json(['message' => 'User unbanned successfully']);
+    }
+
+    #[Route('/api/admin/users/{id}/bans', name: 'api_admin_users_bans_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getUserBans(
+        int $id,
+        UserRepository $userRepository,
+        UserBanRepository $userBanRepository
+    ): JsonResponse
+    {
+        $adminUser = $this->getUser();
+
+        if (!$adminUser instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $user = $userRepository->find($id);
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'errors.not_found'], 404);
+        }
+
+        $bans = $userBanRepository->findByUser($id);
+
+        $data = array_map(function (UserBan $ban) {
+            return [
+                'id' => $ban->getId(),
+                'isPermanent' => $ban->isIsPermanent(),
+                'startedAt' => $ban->getStartedAt()->format('c'),
+                'endedAt' => $ban->getEndedAt()?->format('c'),
+                'reason' => $ban->getReason(),
+                'isActive' => $ban->isActive(),
+                'admin' => [
+                    'id' => $ban->getAdmin()->getId(),
+                    'email' => $ban->getAdmin()->getEmail(),
+                ],
+            ];
+        }, $bans);
+
+        return $this->json(['data' => $data]);
     }
 }
