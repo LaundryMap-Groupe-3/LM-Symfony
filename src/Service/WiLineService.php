@@ -25,9 +25,9 @@ class WiLineService
     /**
      * @return array{success: bool, centrale?: array<string, mixed>, error?: string, statusCode?: int, details?: string}
      */
-    public function fetchCentraleDetailsByClientCode(int $clientCode): array
+    public function fetchCentraleDetailsByClientCode(string $clientCode): array
     {
-        if ($clientCode <= 0) {
+        if ($clientCode === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $clientCode)) {
             return [
                 'success' => false,
                 'error' => 'validation.wiline_client_code_invalid',
@@ -47,7 +47,7 @@ class WiLineService
         }
 
         try {
-            $response = $this->httpClient->request('GET', sprintf('%s/laundry_map/centrales/%d', $this->apiUrl, $clientCode), [
+            $response = $this->httpClient->request('GET', sprintf('%s/laundry_map/centrales/%s', $this->apiUrl, $clientCode), [
                 'headers' => [
                     'Accept' => 'application/json',
                     'Authorization' => sprintf('Bearer %s', $authResult['token']),
@@ -78,8 +78,8 @@ class WiLineService
                     ];
                 }
 
-                $centraleId = $body['id'] ?? null;
-                if (!is_numeric($centraleId) || (int) $centraleId !== $clientCode) {
+                $serial = isset($body['serial']) ? (string) $body['serial'] : null;
+                if ($serial === null || strtoupper($serial) !== strtoupper($clientCode)) {
                     return [
                         'success' => false,
                         'error' => 'errors.wiline_client_not_found',

@@ -487,6 +487,40 @@ class AdminController extends AbstractController
             }
         }
 
+        $equipmentEntries = array_map(static fn ($equipment) => [
+            'id' => $equipment->getId(),
+            'name' => $equipment->getName(),
+            'type' => $equipment->getType()->value,
+            'capacity' => $equipment->getCapacity(),
+            'price' => $equipment->getPrice(),
+            'duration' => $equipment->getDuration(),
+            'equipmentReference' => $equipment->getEquipmentReference(),
+        ], $laundry->getLaundryEquipments()->toArray());
+
+        usort($equipmentEntries, static function (array $a, array $b): int {
+            $typeOrder = [
+                LaundryEquipmentTypeEnum::WASHING_MACHINE->value => 1,
+                LaundryEquipmentTypeEnum::DRYER->value => 2,
+                LaundryEquipmentTypeEnum::IRONING_MACHINE->value => 3,
+                LaundryEquipmentTypeEnum::VACUUM->value => 4,
+                LaundryEquipmentTypeEnum::OTHER->value => 5,
+            ];
+
+            $orderA = $typeOrder[$a['type'] ?? ''] ?? 99;
+            $orderB = $typeOrder[$b['type'] ?? ''] ?? 99;
+            if ($orderA !== $orderB) {
+                return $orderA <=> $orderB;
+            }
+
+            $capacityA = (int) ($a['capacity'] ?? 0);
+            $capacityB = (int) ($b['capacity'] ?? 0);
+            if ($capacityA !== $capacityB) {
+                return $capacityA <=> $capacityB;
+            }
+
+            return strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+        });
+
         $data = [
             'id' => $laundry->getId(),
             'establishmentName' => $laundry->getEstablishmentName(),
@@ -540,6 +574,7 @@ class AdminController extends AbstractController
             'paymentMethodIds' => array_values(array_unique($paymentMethodIds)),
             'services' => $serviceEntries,
             'paymentMethods' => $paymentMethodEntries,
+            'equipments' => $equipmentEntries,
             'washingMachines6kg' => $machineCounts['washingMachines6kg'],
             'washingMachines8kg' => $machineCounts['washingMachines8kg'],
             'washingMachines10kg' => $machineCounts['washingMachines10kg'],
@@ -652,7 +687,7 @@ class AdminController extends AbstractController
     private function getServiceTranslationKey(string $serviceName): ?string
     {
         return match (mb_strtolower(trim($serviceName))) {
-            'self-service 24/7' => 'professional.laundry_form.service_self_service_24_7',
+            'wifi' => 'professional.laundry_form.service_wifi',
             'ironing station' => 'professional.laundry_form.service_ironing_station',
             'laundry folding' => 'professional.laundry_form.service_laundry_folding',
             default => null,

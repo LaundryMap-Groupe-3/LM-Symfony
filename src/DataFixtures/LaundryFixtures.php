@@ -82,8 +82,8 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $serviceSelf = $this->findOneOrFail(
             $manager,
             Service::class,
-            ['name' => ServiceFixtures::SELF_SERVICE_NAME],
-            ServiceFixtures::SELF_SERVICE_NAME
+            ['name' => ServiceFixtures::WIFI_NAME],
+            ServiceFixtures::WIFI_NAME
         );
 
         $serviceIron = $this->findOneOrFail(
@@ -152,8 +152,8 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
                 'city' => 'Paris',
                 'latitude' => 48.8852,
                 'longitude' => 2.3256,
-                'establishmentName' => 'Laverie Batignolles 24-7',
-                'contactEmail' => 'contact@batignolles24-7.test',
+                'establishmentName' => 'Laverie Batignolles',
+                'contactEmail' => 'contact@batignolles.test',
                 'description' => 'Laverie en libre-service ouverte tard, machines recentes et espace attente.',
                 'createdAt' => '2026-03-06 08:30:00',
                 'updatedAt' => '2026-04-11 10:45:00',

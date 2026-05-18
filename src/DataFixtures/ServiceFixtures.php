@@ -8,14 +8,14 @@ use Doctrine\Persistence\ObjectManager;
 
 class ServiceFixtures extends Fixture
 {
-    public const SELF_SERVICE_NAME = 'Self-service 24/7';
+    public const WIFI_NAME = 'WIFI';
     public const IRONING_STATION_NAME = 'Ironing station';
     public const LAUNDRY_FOLDING_NAME = 'Laundry folding';
 
     public function load(ObjectManager $manager): void
     {
         $selfService = new Service();
-        $selfService->setName(self::SELF_SERVICE_NAME);
+        $selfService->setName(self::WIFI_NAME);
         $manager->persist($selfService);
 
         $ironingStation = new Service();
