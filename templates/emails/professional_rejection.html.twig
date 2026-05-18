@@ -1,0 +1,50 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Décision concernant votre compte professionnel{% endblock %}
+
+{% block header_color %}#d32f2f{% endblock %}
+
+{% block header %}Décision concernant votre demande{% endblock %}
+
+{% block content %}
+    <p>Bonjour {{ firstName }},</p>
+
+    <p>
+        Merci de votre intérêt pour LaundryMap. Après examen attentif de votre demande de compte professionnel
+        pour <strong>{{ companyName }}</strong>, nous regrettons de ne pas pouvoir valider votre compte à ce moment.
+    </p>
+
+    <div class="rejection-box">
+        <strong>Statut: Refusé</strong>
+    </div>
+
+    <h3>Raison du refus:</h3>
+    <div class="reason-section">
+        {{ rejectionReason }}
+    </div>
+
+    <h3>Comment continuer ?</h3>
+    <div class="info-blue-box">
+        <strong>Veuillez noter que votre compte a été supprimé.</strong> Pour réessayer, vous devrez créer un nouveau compte
+        avec les corrections apportées aux éléments qui ont conduit au refus de votre première demande.
+    </div>
+
+    <p>
+        Pour réenregistrer votre compte professionnel avec des informations corrigées ou complètes,
+        veuillez procéder à une nouvelle inscription sur notre plateforme.
+    </p>
+
+    <p>
+        Si vous estimez que cette décision a été prise par erreur ou si vous avez des questions,
+        n'hésitez pas à nous contacter.
+    </p>
+
+    <center>
+        <a href="{{ frontendUrl }}/contact" class="button">Nous contacter</a>
+    </center>
+
+    <p class="small-text">
+        Cordialement,<br>
+        L'équipe LaundryMap
+    </p>
+{% endblock %}

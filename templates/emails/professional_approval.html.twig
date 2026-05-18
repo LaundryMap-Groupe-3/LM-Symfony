@@ -1,0 +1,26 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Compte professionnel validé{% endblock %}
+
+{% block header_color %}#27ae60{% endblock %}
+{% block button_color %}#27ae60{% endblock %}
+
+{% block header %}✓ Félicitations!{% endblock %}
+
+{% block content %}
+    <p>Bonjour {{ firstName }},</p>
+
+    <p>
+        Nous sommes heureux de vous informer que votre compte professionnel pour <strong>{{ companyName }}</strong>
+        a été validé avec succès par notre équipe d'administration!
+    </p>
+
+    <div class="success-box">
+        <strong>Votre compte est maintenant actif.</strong><br>
+        Vous pouvez dès maintenant accéder à toutes les fonctionnalités de LaundryMap pour les professionnels.
+    </div>
+
+    <p class="small-text">
+        Si vous avez des questions, n'hésitez pas à nous contacter.
+    </p>
+{% endblock %}

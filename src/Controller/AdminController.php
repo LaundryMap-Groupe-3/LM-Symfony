@@ -89,7 +89,7 @@ class AdminController extends AbstractController
         $data = array_map(function ($professional) {
             return [
                 'id' => $professional->getId(),
-                'siret' => $professional->getSiret(),
+                'siren' => $professional->getSiren(),
                 'status' => $professional->getStatus()->value,
                 'user' => [
                     'id' => $professional->getUser()->getId(),
@@ -215,7 +215,7 @@ class AdminController extends AbstractController
 
         $data = [
             'id' => $professional->getId(),
-            'siret' => $professional->getSiret(),
+            'siren' => $professional->getSiren(),
             'status' => $professional->getStatus()->value,
             'companyName' => $professional->getCompanyName(),
             'phone' => $professional->getPhone(),
@@ -561,7 +561,7 @@ class AdminController extends AbstractController
             'professional' => [
                 'id' => $professional->getId(),
                 'companyName' => $professional->getCompanyName(),
-                'siret' => $professional->getSiret(),
+                'siren' => $professional->getSiren(),
                 'phone' => $professional->getPhone(),
                 'user' => [
                     'id' => $professionalUser->getId(),

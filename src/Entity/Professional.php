@@ -23,7 +23,7 @@ class Professional
     private ?User $user = null;
 
     #[ORM\Column(length: 20)]
-    private string $siret;
+    private string $siren;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $companyName = null;
@@ -72,14 +72,14 @@ class Professional
         return $this;
     }
 
-    public function getSiret(): string
+    public function getSiren(): string
     {
-        return $this->siret;
+        return $this->siren;
     }
 
-    public function setSiret(string $siret): static
+    public function setSiren(string $siren): static
     {
-        $this->siret = $siret;
+        $this->siren = $siren;
         return $this;
     }
 

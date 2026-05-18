@@ -1,0 +1,26 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Laverie validée{% endblock %}
+
+{% block header_color %}#27ae60{% endblock %}
+{% block button_color %}#27ae60{% endblock %}
+
+{% block header %}✓ Félicitations!{% endblock %}
+
+{% block content %}
+    <p>Bonjour {{ firstName }},</p>
+
+    <p>
+        Nous sommes heureux de vous informer que votre laverie <strong>{{ laundryName }}</strong>
+        a été validée avec succès par notre équipe d'administration!
+    </p>
+
+    <div class="success-box">
+        <strong>Votre laverie est maintenant active.</strong><br>
+        Elle est maintenant accessible par le public sur la plateforme.
+    </div>
+
+    <p class="small-text">
+        Si vous avez des questions, n'hésitez pas à nous contacter.
+    </p>
+{% endblock %}

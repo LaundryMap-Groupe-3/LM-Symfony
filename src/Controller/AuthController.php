@@ -40,10 +40,6 @@ class AuthController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $errors = [];
 
-        if (empty($data['acceptCGU'])) {
-            $errors['acceptCGU'] = 'validation.cgu_required';
-        }
-
         // Validation des champs requis
         if (empty($data['email'])) {
             $errors['email'] = 'validation.email_required';
@@ -147,10 +143,6 @@ class AuthController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $errors = [];
 
-        if (empty($data['acceptCGU'])) {
-            $errors['acceptCGU'] = 'validation.cgu_required';
-        }
-
         // Validation des champs requis
         if (empty($data['email'])) {
             $errors['email'] = 'validation.email_required';
@@ -175,13 +167,13 @@ class AuthController extends AbstractController
             $errors['lastName'] = 'validation.name_max_length';
         }
 
-        if (empty($data['siret'])) {
-            $errors['siret'] = 'validation.siret_required';
+        if (empty($data['siren'])) {
+            $errors['siren'] = 'validation.siren_required';
         } else {
-            // Vérifier le SIRET via l'API SIRENE
-            $sireneResult = $sireneService->verifySiret($data['siret']);
+            // Vérifier le SIREN via l'API SIRENE
+            $sireneResult = $sireneService->verifySiren($data['siren']);
             if (!$sireneResult['valid']) {
-                $errors['siret'] = $sireneResult['error'] ?? 'validation.siret_invalid';
+                $errors['siren'] = $sireneResult['error'] ?? 'validation.siren_invalid';
             }
         }
 
@@ -255,7 +247,7 @@ class AuthController extends AbstractController
 
             // Créer le professionnel
             $professional = new Professional();
-            $professional->setSiret(trim($data['siret']));
+            $professional->setSiren(trim($data['siren']));
             $professional->setPhone(trim($data['phone']));
             $professional->setCompanyName(trim($data['companyName']));
             $professional->setStatus(ProfessionalStatusEnum::PENDING);
@@ -394,7 +386,7 @@ class AuthController extends AbstractController
                 'type' => $professional !== null ? 'professional' : 'user',
                 'professional' => $professional ? [
                     'id' => $professional->getId(),
-                    'siret' => $professional->getSiret(),
+                    'siren' => $professional->getSiren(),
                     'status' => $professional->getStatus()->value,
                 ] : null
             ]
@@ -516,7 +508,7 @@ class AuthController extends AbstractController
                 $response['type'] = 'professional';
                 $response['professional'] = [
                     'id' => $professional->getId(),
-                    'siret' => $professional->getSiret(),
+                    'siren' => $professional->getSiren(),
                     'status' => $professional->getStatus()->value,
                     'validationDate' => $professional->getValidationDate()?->format('c'),
                 ];

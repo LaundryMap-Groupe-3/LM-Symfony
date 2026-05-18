@@ -10,7 +10,9 @@ use App\Entity\LaundryFavorite;
 use App\Entity\LaundryNote;
 use App\Entity\LaundryNoteReport;
 use App\Entity\LaundryPayment;
+use App\Entity\LaundryMedia;
 use App\Entity\LaundryService;
+use App\Entity\Media;
 use App\Entity\PaymentMethod;
 use App\Entity\Professional;
 use App\Entity\Service;
@@ -121,6 +123,35 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
             PaymentMethodFixtures::CONTACTLESS_NAME
         );
 
+        $photoLocations = [
+            '/uploads/laundries/1-8f9b998fa85d.jpg',
+            '/uploads/laundries/2-7c7d60870adf.jpg',
+            '/uploads/laundries/3-dcb671ccdf9d.jpg',
+            '/uploads/laundries/4-28114182ea1a.jpg',
+            '/uploads/laundries/5-c6157791f0f8.jpg',
+            '/uploads/laundries/6-f38447837f37.jpg',
+        ];
+
+        $logoLocation = '/uploads/laundries/logo-d95a0a0d39f1.png';
+
+        $logo = new Media();
+        $logo->setLocation($logoLocation);
+        $logo->setOriginalName(basename($logoLocation));
+        $logo->setMimeType('image/png');
+        $logo->setWeight((int) filesize(__DIR__ . '/../../public' . $logoLocation));
+        $manager->persist($logo);
+
+        $photos = [];
+        foreach ($photoLocations as $location) {
+            $photo = new Media();
+            $photo->setLocation($location);
+            $photo->setOriginalName(basename($location));
+            $photo->setMimeType('image/jpeg');
+            $photo->setWeight((int) filesize(__DIR__ . '/../../public' . $location));
+            $manager->persist($photo);
+            $photos[] = $photo;
+        }
+
         $laundry1 = new Laundry();
         $laundry1->setProfessional($professional1);
         $laundry1->setStatus(LaundryStatusEnum::PENDING);
@@ -130,7 +161,16 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $laundry1->setDescription('Grande laverie avec des machines a laver et seche-linge modernes.');
         $laundry1->setCreatedAt(new \DateTime('2026-03-01 08:45:00'));
         $laundry1->setUpdatedAt(new \DateTime('2026-04-10 09:20:00'));
+        $laundry1->setLogo($logo);
         $manager->persist($laundry1);
+
+        foreach ($photos as $photo) {
+            $laundryMedia = new LaundryMedia();
+            $laundryMedia->setLaundry($laundry1);
+            $laundryMedia->setMedia($photo);
+            $laundryMedia->setDescription('');
+            $manager->persist($laundryMedia);
+        }
 
         $laundry2 = new Laundry();
         $laundry2->setProfessional($professional2);
@@ -141,7 +181,16 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $laundry2->setDescription('Laverie de quartier avec espace de pliage et cycles rapides.');
         $laundry2->setCreatedAt(new \DateTime('2026-03-05 09:15:00'));
         $laundry2->setUpdatedAt(new \DateTime('2026-04-09 17:05:00'));
+        $laundry2->setLogo($logo);
         $manager->persist($laundry2);
+
+        foreach ($photos as $photo) {
+            $laundryMedia = new LaundryMedia();
+            $laundryMedia->setLaundry($laundry2);
+            $laundryMedia->setMedia($photo);
+            $laundryMedia->setDescription('');
+            $manager->persist($laundryMedia);
+        }
 
         $approvedLaundryData = [
             [
@@ -308,8 +357,17 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
             $laundry->setDescription($approvedLaundry['description']);
             $laundry->setCreatedAt(new \DateTime($approvedLaundry['createdAt']));
             $laundry->setUpdatedAt(new \DateTime($approvedLaundry['updatedAt']));
-
+            $laundry->setLogo($logo);
             $manager->persist($laundry);
+
+            foreach ($photos as $photo) {
+                $laundryMedia = new LaundryMedia();
+                $laundryMedia->setLaundry($laundry);
+                $laundryMedia->setMedia($photo);
+                $laundryMedia->setDescription('');
+                $manager->persist($laundryMedia);
+            }
+
             $approvedLaundries[] = $laundry;
         }
 
