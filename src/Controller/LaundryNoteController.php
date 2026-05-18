@@ -102,9 +102,9 @@ class LaundryNoteController extends AbstractController
         return $this->json(['laundryNote' => $data], 201);
     }
 
-    #[Route('/api/laundry/{id}/comments', name: 'api_laundry_note_all', methods: ['GET'])]
+    #[Route('/api/me/comments', name: 'api_laundry_note_all_me', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function getLaundryNotes(Request $request): JsonResponse
+    public function getLaundryNotesByUser(Request $request): JsonResponse
     {
         try {
             $user = $this->getUser();
@@ -118,6 +118,35 @@ class LaundryNoteController extends AbstractController
 
             $comments = $this->laundryNoteRepository->getCommentsByUser($user, $offset, $limit);
             $total = $this->laundryNoteRepository->countCommentsByUser($user);
+
+            $data = $this->serializer->normalize($comments, null, ['groups' => ['laundry:read']]);
+
+            return JsonResponse::fromJsonString(
+                json_encode([
+                    'comments' => $data,
+                    'pagination' => [
+                        'page' => $page,
+                        'limit' => $limit,
+                        'total' => $total,
+                        'pages' => (int) ceil($total / $limit),
+                    ],
+                ])
+            );
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    #[Route('/api/laundry/{id}/comments', name: 'api_laundry_note_all_laundry', methods: ['GET'])]
+    public function getLaundryNotesByLaundry(Request $request, Laundry $laundry): JsonResponse
+    {
+        try {
+            $page = max(1, (int) $request->query->get('page', 1));
+            $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+            $offset = ($page - 1) * $limit;
+
+            $comments = $this->laundryNoteRepository->getCommentsByLaundry($laundry, $offset, $limit);
+            $total = $this->laundryNoteRepository->countCommentsByLaundry($laundry);
 
             $data = $this->serializer->normalize($comments, null, ['groups' => ['laundry:read']]);
 

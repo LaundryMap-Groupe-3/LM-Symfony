@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Laundry;
 use App\Entity\LaundryNote;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -44,11 +45,31 @@ class LaundryNoteRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    public function getCommentsByLaundry(Laundry $laundry, int $offset, int $limit): ?array
+    {
+        return $this->createQueryBuilder('ln')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->where('ln.laundry = :laundry')
+            ->setParameter('laundry', $laundry->getId())
+            ->getQuery()
+            ->getResult();
+    }
+
     public function countCommentsByUser(User $user): ?int
     {
         return $this->createQueryBuilder('ln')
             ->where('ln.user = :user')
             ->setParameter('user', $user->getId())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countCommentsByLaundry(Laundry $laundry): ?int
+    {
+        return $this->createQueryBuilder('ln')
+            ->where('ln.laundry = :laundry')
+            ->setParameter('laundry', $laundry->getId())
             ->getQuery()
             ->getSingleScalarResult();
     }
