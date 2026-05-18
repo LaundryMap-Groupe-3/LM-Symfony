@@ -205,7 +205,7 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/user/preferences', name: 'api_user_preferences_get', methods: ['GET'])]
-    #[Route('/api/Admin/preferences', name: 'api_admin_preferences_create', methods: ['GET'])]
+    #[Route('/api/admin/preferences', name: 'api_admin_preferences_create', methods: ['GET'])]
     public function getPreferences(EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();
@@ -262,7 +262,7 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/user/preferences', name: 'api_user_preferences_update', methods: ['PUT'])]
-    #[Route('/api/Admin/preferences', name: 'api_admin_preferences_update', methods: ['PUT'])]
+    #[Route('/api/admin/preferences', name: 'api_admin_preferences_update', methods: ['PUT'])]
     public function updatePreferences(
         Request $request,
         EntityManagerInterface $entityManager

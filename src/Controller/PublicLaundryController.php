@@ -10,11 +10,17 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class PublicLaundryController extends AbstractController
 {
     #[Route('/api/laundries/nearby', name: 'api_public_laundries_nearby', methods: ['GET'])]
-    public function nearby(Request $request, LaundryRepository $laundryRepository, LaundryNoteRepository $laundryNoteRepository): JsonResponse
+    public function nearby(
+        Request $request,
+        LaundryRepository $laundryRepository,
+        LaundryNoteRepository $laundryNoteRepository,
+        NormalizerInterface $normalizer
+    ): JsonResponse
     {
         $latRaw = $request->query->get('lat');
         $lngRaw = $request->query->get('lng');
@@ -64,7 +70,7 @@ class PublicLaundryController extends AbstractController
             $closeAtMinutes = $this->timeStringToMinutes($closeAtRaw);
         }
 
-        $laundries = $laundryRepository
+        $qb = $laundryRepository
             ->createQueryBuilder('l')
             ->leftJoin('l.address', 'a')
             ->leftJoin('l.logo', 'logo')
@@ -86,31 +92,33 @@ class PublicLaundryController extends AbstractController
             ->andWhere('l.deletedAt IS NULL')
             ->andWhere('a.latitude IS NOT NULL')
             ->andWhere('a.longitude IS NOT NULL')
-            ->setParameter('status', LaundryStatusEnum::APPROVED)
-            ->getQuery()
-            ->getResult();
+            ->setParameter('status', LaundryStatusEnum::APPROVED);
+
+        if ($city !== '') {
+            $qb->andWhere('LOWER(a.city) = :city')
+               ->setParameter('city', mb_strtolower($city));
+        }
+
+        if ($query !== '') {
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    'LOWER(l.establishmentName) LIKE :query',
+                    'LOWER(a.address) LIKE :query',
+                    'LOWER(a.city) LIKE :query'
+                )
+            )->setParameter('query', '%' . mb_strtolower($query) . '%');
+        }
+
+        $laundries = $qb->getQuery()->getResult();
 
         $results = [];
+        $distanceById = [];
+        $openNowById = [];
 
         foreach ($laundries as $laundry) {
             $address = $laundry->getAddress();
             if (!$address) {
                 continue;
-            }
-
-            $laundryCity = (string) ($address->getCity() ?? '');
-            $laundryAddress = (string) ($address->getAddress() ?? '');
-            $laundryName = (string) ($laundry->getEstablishmentName() ?? '');
-
-            if ($city !== '' && mb_strtolower($laundryCity) !== mb_strtolower($city)) {
-                continue;
-            }
-
-            if ($query !== '') {
-                $haystack = mb_strtolower(trim($laundryName . ' ' . $laundryAddress . ' ' . $laundryCity));
-                if (!str_contains($haystack, mb_strtolower($query))) {
-                    continue;
-                }
             }
 
             $services = [];
@@ -155,56 +163,49 @@ class PublicLaundryController extends AbstractController
                 }
             }
 
-            $averageNote = null;
-            $reviewCount = 0;
-            $stats = $laundryNoteRepository->getAverageRatingAndCountByLaundryIds([(int) $laundry->getId()]);
-            if ($stats && $stats['avg_rating'] !== null) {
-                $averageNote = round((float) $stats['avg_rating'], 2);
-                $reviewCount = (int) $stats['review_count'];
-            }
-
-            $logo = $laundry->getLogo();
-            $isOpenNow = $this->isLaundryOpenNow($laundry);
-
-            $results[] = [
-                'id' => $laundry->getId(),
-                'establishmentName' => $laundryName,
-                'description' => $laundry->getDescription() ?? '',
-                'address' => $laundryAddress,
-                'postalCode' => (string) ($address->getPostalCode() ?? ''),
-                'city' => $laundryCity,
-                'country' => (string) ($address->getCountry() ?? ''),
-                'latitude' => $address->getLatitude(),
-                'longitude' => $address->getLongitude(),
-                'distanceKm' => $distanceKm,
-                'rating' => $averageNote,
-                'reviewCount' => $reviewCount,
-                'featured' => false,
-                'services' => $services,
-                'paymentMethods' => $payments,
-                'isOpenNow' => $isOpenNow,
-                'openingHours' => null,
-                'imageUrl' => $logo?->getLocation(),
-            ];
+            $laundryId = $laundry->getId();
+            $results[] = $laundry;
+            $distanceById[$laundryId] = $distanceKm;
+            $openNowById[$laundryId] = $this->isLaundryOpenNow($laundry);
         }
 
-        usort($results, static function (array $a, array $b): int {
-            if ($a['distanceKm'] === null && $b['distanceKm'] === null) {
-                return strcmp((string) $a['establishmentName'], (string) $b['establishmentName']);
+        usort($results, static function (Laundry $a, Laundry $b) use ($distanceById): int {
+            $distanceA = $distanceById[$a->getId()] ?? null;
+            $distanceB = $distanceById[$b->getId()] ?? null;
+
+            if ($distanceA === null && $distanceB === null) {
+                return strcmp((string) $a->getEstablishmentName(), (string) $b->getEstablishmentName());
             }
-            if ($a['distanceKm'] === null) {
+            if ($distanceA === null) {
                 return 1;
             }
-            if ($b['distanceKm'] === null) {
+            if ($distanceB === null) {
                 return -1;
             }
-            return $a['distanceKm'] <=> $b['distanceKm'];
+            return $distanceA <=> $distanceB;
         });
 
         $results = array_slice($results, 0, $limit);
+        $laundryIds = array_map(static fn (Laundry $laundry): int => $laundry->getId(), $results);
+        $ratings = $laundryNoteRepository->getAverageRatingAndCountByLaundryIdsGrouped($laundryIds);
+
+        $ratingById = [];
+        $reviewCountById = [];
+        foreach ($laundryIds as $laundryId) {
+            $ratingById[$laundryId] = $ratings[$laundryId]['avg_rating'] ?? null;
+            $reviewCountById[$laundryId] = $ratings[$laundryId]['review_count'] ?? 0;
+        }
+
+        $normalized = $normalizer->normalize($results, null, [
+            'laundry_card' => true,
+            'distance_by_id' => $distanceById,
+            'rating_by_id' => $ratingById,
+            'review_count_by_id' => $reviewCountById,
+            'open_now_by_id' => $openNowById,
+        ]);
 
         return $this->json([
-            'laundries' => $results,
+            'laundries' => $normalized,
             'meta' => [
                 'count' => count($results),
                 'hasPosition' => $hasPosition,

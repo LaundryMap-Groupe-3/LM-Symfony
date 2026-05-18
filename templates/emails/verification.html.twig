@@ -1,0 +1,26 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Vérifiez votre adresse email{% endblock %}
+
+{% block header %}Bienvenue sur LaundryMap!{% endblock %}
+
+{% block content %}
+    <p>Bonjour {{ firstName }},</p>
+
+    <p>
+        Merci de votre inscription! Pour finaliser votre compte, veuillez vérifier votre adresse email
+        en cliquant sur le bouton ci-dessous.
+    </p>
+
+    <center>
+        <a href="{{ verificationUrl }}" class="button">Vérifier votre email</a>
+    </center>
+
+    <div class="info-box">
+        <strong>Attention:</strong> Ce lien expire dans 24 heures.
+    </div>
+
+    <p class="small-text">
+        Si vous n'avez pas créé ce compte, veuillez ignorer cet email.
+    </p>
+{% endblock %}

@@ -246,7 +246,7 @@ class ProfessionalController extends AbstractController
 
     #[Route('/api/professional/wiline/clients/{clientCode}/machines', name: 'api_professional_wiline_client_machines', methods: ['GET'])]
     public function getWiLineMachinesByClientCode(
-        int $clientCode,
+        string $clientCode,
         EntityManagerInterface $entityManager,
         WiLineService $wiLineService
     ): JsonResponse {
@@ -279,6 +279,12 @@ class ProfessionalController extends AbstractController
                 'id' => $centrale['id'] ?? null,
                 'name' => $centrale['name'] ?? null,
                 'serial' => $centrale['serial'] ?? null,
+                'address' => $centrale['address'] ?? null,
+                'postalCode' => $centrale['postal_code'] ?? null,
+                'city' => $centrale['city'] ?? null,
+                'country' => $centrale['country'] ?? null,
+                'phone' => $centrale['phone'] ?? null,
+                'openingHours' => $centrale['opening_hours'] ?? null,
             ],
             'machines' => $machines,
             'autoFill' => $machineFields,
@@ -510,7 +516,7 @@ class ProfessionalController extends AbstractController
         $showPreciseAddress = filter_var($payload['showPreciseAddress'] ?? false, FILTER_VALIDATE_BOOL);
         if ($showPreciseAddress) {
             $wiLineReference = trim((string) ($payload['wiLineReference'] ?? ''));
-            if ($wiLineReference === '' || !preg_match('/^\d+$/', $wiLineReference)) {
+            if ($wiLineReference === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $wiLineReference)) {
                 $errors['wiLineReference'] = 'validation.wiline_client_code_invalid';
             }
         }
@@ -656,7 +662,7 @@ class ProfessionalController extends AbstractController
     private function getServiceTranslationKey(string $serviceName): ?string
     {
         return match (mb_strtolower(trim($serviceName))) {
-            'self-service 24/7' => 'professional.laundry_form.service_self_service_24_7',
+            'wifi' => 'professional.laundry_form.service_wifi',
             'ironing station' => 'professional.laundry_form.service_ironing_station',
             'laundry folding' => 'professional.laundry_form.service_laundry_folding',
             default => null,
@@ -1061,19 +1067,35 @@ class ProfessionalController extends AbstractController
 
             $categoryText = strtoupper(trim((string) ($machine['category_text'] ?? '')));
             $category = (int) ($machine['category'] ?? 0);
-            $isWashingMachine = $categoryText === 'WASH' || $category === 1;
-            $isDryer = $categoryText === 'DRY' || $category === 2;
+            $typeName = (string) ($machine['type_name'] ?? '');
+            $machineName = (string) ($machine['name'] ?? '');
+            $typeNameLower = mb_strtolower($typeName . ' ' . $machineName);
+
+            $isWashingMachine = $categoryText === 'WASH' || $category === 1
+                || (($categoryText === '' || $categoryText === 'UNKNOWN') && str_contains($typeNameLower, 'machine'));
+            $isDryer = $categoryText === 'DRY' || $category === 2
+                || (($categoryText === '' || $categoryText === 'UNKNOWN') && (str_contains($typeNameLower, 'sechoir') || str_contains($typeNameLower, 'séchoir') || str_contains($typeNameLower, 'sèchoir')));
 
             if (!$isWashingMachine && !$isDryer) {
                 continue;
             }
 
-            $capacity = $this->extractWiLineCapacity((string) ($machine['type_name'] ?? ''), (string) ($machine['name'] ?? ''));
-            if ($capacity === null) {
+            $capacity = $this->extractWiLineCapacity($typeName, $machineName);
+            if ($capacity === null && $isDryer) {
+                $capacity = 8;
+            } elseif ($capacity === null) {
                 continue;
             }
 
-            $capacityKey = $capacity >= 12 ? '12kgPlus' : sprintf('%dkg', $capacity);
+            if ($capacity >= 12) {
+                $capacityKey = '12kgPlus';
+            } elseif ($capacity >= 9) {
+                $capacityKey = '10kg';
+            } elseif ($capacity >= 5) {
+                $capacityKey = '8kg';
+            } else {
+                $capacityKey = '6kg';
+            }
 
             if ($isWashingMachine) {
                 $countField = sprintf('washingMachines%s', $capacityKey);

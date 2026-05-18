@@ -9,7 +9,7 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class SireneService
 {
-    private const DEFAULT_SIRENE_API_URL = 'https://api.insee.fr/api-sirene/3.11/siret';
+    private const DEFAULT_SIRENE_API_URL = 'https://api.insee.fr/api-sirene/3.11/siren';
 
     private string $sireneApiUrl;
     
@@ -21,19 +21,13 @@ class SireneService
         $this->sireneApiUrl = $sireneApiUrl ?: self::DEFAULT_SIRENE_API_URL;
     }
 
-    /**
-     * Vérifie si un SIRET existe via l'API SIRENE
-     * 
-     * @param string $siret Le SIRET à vérifier (14 chiffres)
-     * @return array Informations sur l'entreprise ou erreur
-     */
-    public function verifySiret(string $siret): array
+    public function verifySiren(string $siren): array
     {
-        // Validation du format SIRET (14 chiffres)
-        if (!preg_match('/^\d{14}$/', $siret)) {
+        // Validation du format SIREN (9 chiffres)
+        if (!preg_match('/^\d{9}$/', $siren)) {
             return [
                 'valid' => false,
-                'error' => 'validation.siret_invalid'
+                'error' => 'validation.siren_invalid'
             ];
         }
 
@@ -45,7 +39,7 @@ class SireneService
         }
 
         try {
-            $response = $this->httpClient->request('GET', $this->sireneApiUrl . '/' . $siret, [
+            $response = $this->httpClient->request('GET', $this->sireneApiUrl . '/' . $siren, [
                 'headers' => [
                     'Accept' => 'application/json',
                     'X-INSEE-Api-Key-Integration' => $this->apiKey,
@@ -56,42 +50,37 @@ class SireneService
             $statusCode = $response->getStatusCode();
             if ($statusCode === 200) {
                 $data = $response->toArray();
-                $etablissement = $data['etablissement'] ?? [];
-                $uniteLegale = $etablissement['uniteLegale'] ?? [];
+                $uniteLegale = $data['uniteLegale'] ?? [];
+                $periode = $uniteLegale['periodesUniteLegale'][0] ?? [];
 
                 return [
                     'valid' => true,
-                    // Support both historical flat payload and current nested payload.
-                    'siret' => $data['siret'] ?? $etablissement['siret'] ?? $siret,
-                    'nom_complet' => $data['nom_complet']
-                        ?? $uniteLegale['denominationUniteLegale']
+                    'siren' => $uniteLegale['siren'] ?? $siren,
+                    'nom_complet' => $periode['denominationUniteLegale']
                         ?? trim(($uniteLegale['prenom1UniteLegale'] ?? '') . ' ' . ($uniteLegale['nomUniteLegale'] ?? ''))
                         ?: null,
-                    'enseigne' => $data['enseigne'] ?? $etablissement['enseigne1Etablissement'] ?? null,
-                    'etat_administratif' => $data['etat_administratif']
-                        ?? $etablissement['etatAdministratifEtablissement']
-                        ?? null,
+                    'etat_administratif' => $periode['etatAdministratifUniteLegale'] ?? null,
                 ];
             }
 
             if ($statusCode === 404) {
                 return [
                     'valid' => false,
-                    'error' => 'errors.siret_not_found'
+                    'error' => 'errors.siren_not_found'
                 ];
             }
 
             $body = trim(substr($response->getContent(false), 0, 200));
             return [
                 'valid' => false,
-                'error' => 'errors.siret_check_error',
+                'error' => 'errors.siren_check_error',
                 'statusCode' => $statusCode,
                 'body' => $body
             ];
         } catch (ClientExceptionInterface|ServerExceptionInterface|TransportExceptionInterface $e) {
             return [
                 'valid' => false,
-                'error' => 'errors.siret_verify_error',
+                'error' => 'errors.siren_verify_error',
                 'message' => $e->getMessage()
             ];
         }

@@ -10,7 +10,9 @@ use App\Entity\LaundryFavorite;
 use App\Entity\LaundryNote;
 use App\Entity\LaundryNoteReport;
 use App\Entity\LaundryPayment;
+use App\Entity\LaundryMedia;
 use App\Entity\LaundryService;
+use App\Entity\Media;
 use App\Entity\PaymentMethod;
 use App\Entity\Professional;
 use App\Entity\Service;
@@ -82,8 +84,8 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $serviceSelf = $this->findOneOrFail(
             $manager,
             Service::class,
-            ['name' => ServiceFixtures::SELF_SERVICE_NAME],
-            ServiceFixtures::SELF_SERVICE_NAME
+            ['name' => ServiceFixtures::WIFI_NAME],
+            ServiceFixtures::WIFI_NAME
         );
 
         $serviceIron = $this->findOneOrFail(
@@ -121,6 +123,35 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
             PaymentMethodFixtures::CONTACTLESS_NAME
         );
 
+        $photoLocations = [
+            '/uploads/laundries/1-8f9b998fa85d.jpg',
+            '/uploads/laundries/2-7c7d60870adf.jpg',
+            '/uploads/laundries/3-dcb671ccdf9d.jpg',
+            '/uploads/laundries/4-28114182ea1a.jpg',
+            '/uploads/laundries/5-c6157791f0f8.jpg',
+            '/uploads/laundries/6-f38447837f37.jpg',
+        ];
+
+        $logoLocation = '/uploads/laundries/logo-d95a0a0d39f1.png';
+
+        $logo = new Media();
+        $logo->setLocation($logoLocation);
+        $logo->setOriginalName(basename($logoLocation));
+        $logo->setMimeType('image/png');
+        $logo->setWeight((int) filesize(__DIR__ . '/../../public' . $logoLocation));
+        $manager->persist($logo);
+
+        $photos = [];
+        foreach ($photoLocations as $location) {
+            $photo = new Media();
+            $photo->setLocation($location);
+            $photo->setOriginalName(basename($location));
+            $photo->setMimeType('image/jpeg');
+            $photo->setWeight((int) filesize(__DIR__ . '/../../public' . $location));
+            $manager->persist($photo);
+            $photos[] = $photo;
+        }
+
         $laundry1 = new Laundry();
         $laundry1->setProfessional($professional1);
         $laundry1->setStatus(LaundryStatusEnum::PENDING);
@@ -130,7 +161,16 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $laundry1->setDescription('Grande laverie avec des machines a laver et seche-linge modernes.');
         $laundry1->setCreatedAt(new \DateTime('2026-03-01 08:45:00'));
         $laundry1->setUpdatedAt(new \DateTime('2026-04-10 09:20:00'));
+        $laundry1->setLogo($logo);
         $manager->persist($laundry1);
+
+        foreach ($photos as $photo) {
+            $laundryMedia = new LaundryMedia();
+            $laundryMedia->setLaundry($laundry1);
+            $laundryMedia->setMedia($photo);
+            $laundryMedia->setDescription('');
+            $manager->persist($laundryMedia);
+        }
 
         $laundry2 = new Laundry();
         $laundry2->setProfessional($professional2);
@@ -141,7 +181,16 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $laundry2->setDescription('Laverie de quartier avec espace de pliage et cycles rapides.');
         $laundry2->setCreatedAt(new \DateTime('2026-03-05 09:15:00'));
         $laundry2->setUpdatedAt(new \DateTime('2026-04-09 17:05:00'));
+        $laundry2->setLogo($logo);
         $manager->persist($laundry2);
+
+        foreach ($photos as $photo) {
+            $laundryMedia = new LaundryMedia();
+            $laundryMedia->setLaundry($laundry2);
+            $laundryMedia->setMedia($photo);
+            $laundryMedia->setDescription('');
+            $manager->persist($laundryMedia);
+        }
 
         $approvedLaundryData = [
             [
@@ -152,8 +201,8 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
                 'city' => 'Paris',
                 'latitude' => 48.8852,
                 'longitude' => 2.3256,
-                'establishmentName' => 'Laverie Batignolles 24-7',
-                'contactEmail' => 'contact@batignolles24-7.test',
+                'establishmentName' => 'Laverie Batignolles',
+                'contactEmail' => 'contact@batignolles.test',
                 'description' => 'Laverie en libre-service ouverte tard, machines recentes et espace attente.',
                 'createdAt' => '2026-03-06 08:30:00',
                 'updatedAt' => '2026-04-11 10:45:00',
@@ -284,6 +333,259 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
                 'createdAt' => '2026-03-15 10:40:00',
                 'updatedAt' => '2026-04-16 19:05:00',
             ],
+            [
+                'professional' => $professional1,
+                'address' => '3 Rue de la Republique 60300 Senlis',
+                'street' => '3 Rue de la Republique',
+                'postalCode' => 60300,
+                'city' => 'Senlis',
+                'latitude' => 49.2051,
+                'longitude' => 2.5861,
+                'establishmentName' => 'Senlis Clean Express',
+                'contactEmail' => 'contact@senlis-clean-express.test',
+                'description' => 'Laverie self-service au coeur de Senlis avec machines recentes.',
+                'createdAt' => '2026-03-16 09:00:00',
+                'updatedAt' => '2026-04-17 10:00:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '18 Rue de Villevert 60300 Senlis',
+                'street' => '18 Rue de Villevert',
+                'postalCode' => 60300,
+                'city' => 'Senlis',
+                'latitude' => 49.2078,
+                'longitude' => 2.5894,
+                'establishmentName' => 'Senlis Laverie du Centre',
+                'contactEmail' => 'hello@senlis-laverie-centre.test',
+                'description' => 'Laverie familiale avec grand espace de pliage et wifi gratuit.',
+                'createdAt' => '2026-03-17 08:30:00',
+                'updatedAt' => '2026-04-17 14:20:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '7 Rue du Bourg 60300 Senlis',
+                'street' => '7 Rue du Bourg',
+                'postalCode' => 60300,
+                'city' => 'Senlis',
+                'latitude' => 49.2035,
+                'longitude' => 2.5843,
+                'establishmentName' => 'Senlis Wash and Go',
+                'contactEmail' => 'contact@senlis-wash-and-go.test',
+                'description' => 'Cycles rapides 30 minutes, ideal pour les residents du centre historique.',
+                'createdAt' => '2026-03-18 10:15:00',
+                'updatedAt' => '2026-04-18 09:30:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '25 Avenue de la Liberation 60300 Senlis',
+                'street' => '25 Avenue de la Liberation',
+                'postalCode' => 60300,
+                'city' => 'Senlis',
+                'latitude' => 49.2092,
+                'longitude' => 2.5820,
+                'establishmentName' => 'Senlis Laundry Plus',
+                'contactEmail' => 'hello@senlis-laundry-plus.test',
+                'description' => 'Laverie spacieuse avec sechoirs grande capacite et parking a proximite.',
+                'createdAt' => '2026-03-19 11:00:00',
+                'updatedAt' => '2026-04-18 16:45:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '6 Rue de Meaux 60300 Senlis',
+                'street' => '6 Rue de Meaux',
+                'postalCode' => 60300,
+                'city' => 'Senlis',
+                'latitude' => 49.2020,
+                'longitude' => 2.5910,
+                'establishmentName' => 'Senlis Eco Lavage',
+                'contactEmail' => 'contact@senlis-eco-lavage.test',
+                'description' => 'Laverie ecologique avec programmes basse temperature et lessive fournie.',
+                'createdAt' => '2026-03-20 09:45:00',
+                'updatedAt' => '2026-04-19 11:10:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '14 Rue Saint-Hilaire 60300 Senlis',
+                'street' => '14 Rue Saint-Hilaire',
+                'postalCode' => 60300,
+                'city' => 'Senlis',
+                'latitude' => 49.2058,
+                'longitude' => 2.5875,
+                'establishmentName' => 'Senlis Pressing Moderne',
+                'contactEmail' => 'hello@senlis-pressing-moderne.test',
+                'description' => 'Laverie avec service pressing et repassage professionnel disponible.',
+                'createdAt' => '2026-03-21 08:00:00',
+                'updatedAt' => '2026-04-19 17:30:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '30 Rue du Moulin 60740 Saint-Maximin',
+                'street' => '30 Rue du Moulin',
+                'postalCode' => 60740,
+                'city' => 'Saint-Maximin',
+                'latitude' => 49.2210,
+                'longitude' => 2.4520,
+                'establishmentName' => 'Saint-Maximin Laverie Rapide',
+                'contactEmail' => 'contact@saint-maximin-laverie.test',
+                'description' => 'Laverie de proximite avec machines 6kg a 12kg et paiement sans contact.',
+                'createdAt' => '2026-03-22 10:30:00',
+                'updatedAt' => '2026-04-20 09:00:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '4 Place de l Eglise 60560 Orry-la-Ville',
+                'street' => '4 Place de l Eglise',
+                'postalCode' => 60560,
+                'city' => 'Orry-la-Ville',
+                'latitude' => 49.1320,
+                'longitude' => 2.5140,
+                'establishmentName' => 'Orry Wash Service',
+                'contactEmail' => 'contact@orry-wash-service.test',
+                'description' => 'Petite laverie conviviale ouverte 7j/7 avec acces facile.',
+                'createdAt' => '2026-03-23 09:20:00',
+                'updatedAt' => '2026-04-20 14:15:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '12 Rue Pierre Curie 60230 Chambly',
+                'street' => '12 Rue Pierre Curie',
+                'postalCode' => 60230,
+                'city' => 'Chambly',
+                'latitude' => 49.1681,
+                'longitude' => 2.2488,
+                'establishmentName' => 'Chambly Clean Center',
+                'contactEmail' => 'hello@chambly-clean-center.test',
+                'description' => 'Laverie moderne avec distributeur de produits lessiviels et eclairage LED.',
+                'createdAt' => '2026-03-24 11:10:00',
+                'updatedAt' => '2026-04-21 10:30:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '9 Rue du General de Gaulle 60600 Clermont',
+                'street' => '9 Rue du General de Gaulle',
+                'postalCode' => 60600,
+                'city' => 'Clermont',
+                'latitude' => 49.3784,
+                'longitude' => 2.4138,
+                'establishmentName' => 'Clermont Lavage Central',
+                'contactEmail' => 'contact@clermont-lavage-central.test',
+                'description' => 'Laverie en centre-ville avec machines haute performance et wifi.',
+                'createdAt' => '2026-03-25 08:45:00',
+                'updatedAt' => '2026-04-21 15:20:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '21 Rue Sainte-Marguerite 60400 Noyon',
+                'street' => '21 Rue Sainte-Marguerite',
+                'postalCode' => 60400,
+                'city' => 'Noyon',
+                'latitude' => 49.5795,
+                'longitude' => 2.9997,
+                'establishmentName' => 'Noyon Lav Express',
+                'contactEmail' => 'contact@noyon-lav-express.test',
+                'description' => 'Laverie accessible avec grand parking et cycles express disponibles.',
+                'createdAt' => '2026-03-26 10:00:00',
+                'updatedAt' => '2026-04-22 09:45:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '5 Avenue Flandre Artois 60700 Pont-Sainte-Maxence',
+                'street' => '5 Avenue Flandre Artois',
+                'postalCode' => 60700,
+                'city' => 'Pont-Sainte-Maxence',
+                'latitude' => 49.3024,
+                'longitude' => 2.6049,
+                'establishmentName' => 'Pont-Sainte-Maxence Wash Hub',
+                'contactEmail' => 'hello@pont-ste-maxence-wash.test',
+                'description' => 'Laverie avec espace attente confortable et machines basse consommation.',
+                'createdAt' => '2026-03-27 09:30:00',
+                'updatedAt' => '2026-04-22 16:00:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '33 Rue du Docteur Roux 60200 Compiegne',
+                'street' => '33 Rue du Docteur Roux',
+                'postalCode' => 60200,
+                'city' => 'Compiegne',
+                'latitude' => 49.4230,
+                'longitude' => 2.8233,
+                'establishmentName' => 'Compiegne Laverie Nord',
+                'contactEmail' => 'contact@compiegne-laverie-nord.test',
+                'description' => 'Laverie quartier nord avec machines 8 a 20kg et sechoirs puissants.',
+                'createdAt' => '2026-03-28 08:00:00',
+                'updatedAt' => '2026-04-23 10:10:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '16 Rue Saint-Nicolas 60200 Compiegne',
+                'street' => '16 Rue Saint-Nicolas',
+                'postalCode' => 60200,
+                'city' => 'Compiegne',
+                'latitude' => 49.4153,
+                'longitude' => 2.8301,
+                'establishmentName' => 'Compiegne City Laundry',
+                'contactEmail' => 'hello@compiegne-city-laundry.test',
+                'description' => 'Laverie en coeur de ville avec paiement CB et possibilite de depôt.',
+                'createdAt' => '2026-03-29 11:20:00',
+                'updatedAt' => '2026-04-23 17:40:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '2 Rue des Ecoles 60110 Meru',
+                'street' => '2 Rue des Ecoles',
+                'postalCode' => 60110,
+                'city' => 'Meru',
+                'latitude' => 49.2348,
+                'longitude' => 2.1348,
+                'establishmentName' => 'Meru Laverie Pratique',
+                'contactEmail' => 'contact@meru-laverie-pratique.test',
+                'description' => 'Laverie bien equipee proche des ecoles avec horaires etendus.',
+                'createdAt' => '2026-03-30 09:15:00',
+                'updatedAt' => '2026-04-24 08:50:00',
+            ],
+            [
+                'professional' => $professional2,
+                'address' => '10 Avenue de la Gare 60800 Crepy-en-Valois',
+                'street' => '10 Avenue de la Gare',
+                'postalCode' => 60800,
+                'city' => 'Crepy-en-Valois',
+                'latitude' => 49.2337,
+                'longitude' => 2.8827,
+                'establishmentName' => 'Crepy Wash Station',
+                'contactEmail' => 'contact@crepy-wash-station.test',
+                'description' => 'Laverie proche de la gare, idéale pour les navetteurs.',
+                'createdAt' => '2026-03-31 10:45:00',
+                'updatedAt' => '2026-04-24 14:25:00',
+            ],
+            [
+                'professional' => $professional1,
+                'address' => '8 Rue du Marche 60270 Gouvieux',
+                'street' => '8 Rue du Marche',
+                'postalCode' => 60270,
+                'city' => 'Gouvieux',
+                'latitude' => 49.1860,
+                'longitude' => 2.4170,
+                'establishmentName' => 'Gouvieux Laverie du Marche',
+                'contactEmail' => 'hello@gouvieux-laverie-marche.test',
+                'description' => 'Laverie de quartier face au marche avec sechoirs rapides.',
+                'createdAt' => '2026-04-01 08:30:00',
+                'updatedAt' => '2026-04-25 09:00:00',
+            ],
+
+            [
+                'professional' => $professional1,
+                'address' => '11 Rue de l Oise 60300 Senlis',
+                'street' => '11 Rue de l Oise',
+                'postalCode' => 60300,
+                'city' => 'Senlis',
+                'latitude' => 49.2045,
+                'longitude' => 2.5855,
+                'establishmentName' => 'Senlis Laverie de l Oise',
+                'contactEmail' => 'contact@senlis-laverie-oise.test',
+                'description' => 'Laverie moderne avec vue degagee et machines a double tambour.',
+                'createdAt' => '2026-04-03 09:00:00',
+                'updatedAt' => '2026-04-26 10:00:00',
+            ],
         ];
 
         $approvedLaundries = [];
@@ -308,8 +610,17 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
             $laundry->setDescription($approvedLaundry['description']);
             $laundry->setCreatedAt(new \DateTime($approvedLaundry['createdAt']));
             $laundry->setUpdatedAt(new \DateTime($approvedLaundry['updatedAt']));
-
+            $laundry->setLogo($logo);
             $manager->persist($laundry);
+
+            foreach ($photos as $photo) {
+                $laundryMedia = new LaundryMedia();
+                $laundryMedia->setLaundry($laundry);
+                $laundryMedia->setMedia($photo);
+                $laundryMedia->setDescription('');
+                $manager->persist($laundryMedia);
+            }
+
             $approvedLaundries[] = $laundry;
         }
 

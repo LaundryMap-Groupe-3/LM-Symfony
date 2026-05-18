@@ -23,9 +23,13 @@ class ProfessionalRepository extends ServiceEntityRepository
     public function findPendingProfessionals(int $limit = 10, int $offset = 0): array
     {
         return $this->createQueryBuilder('p')
+            ->leftJoin('p.user', 'u')
+            ->addSelect('u')
+            ->leftJoin('p.address', 'addr')
+            ->addSelect('addr')
             ->where('p.status = :status')
             ->setParameter('status', ProfessionalStatusEnum::PENDING)
-            ->orderBy('p.user', 'ASC')
+            ->orderBy('u.lastName', 'ASC')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->getQuery()

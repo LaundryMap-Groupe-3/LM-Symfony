@@ -1,0 +1,44 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Décision concernant votre laverie {{ laundryName }}{% endblock %}
+
+{% block header_color %}#d32f2f{% endblock %}
+
+{% block header %}Décision concernant votre demande{% endblock %}
+
+{% block content %}
+    <p>Bonjour {{ firstName }},</p>
+
+    <p>
+        Merci de votre intérêt pour LaundryMap. Après examen attentif de votre demande
+        pour la laverie <strong>{{ laundryName }}</strong>, nous regrettons de ne pas pouvoir valider à ce moment.
+    </p>
+
+    <div class="rejection-box">
+        <strong>Statut: Refusé</strong>
+    </div>
+
+    <h3>Raison du refus:</h3>
+    <div class="reason-section">
+        {{ rejectionReason }}
+    </div>
+
+    <h3>Comment continuer ?</h3>
+    <div class="info-blue-box">
+        Pour soumettre une nouvelle demande, apportez les corrections nécessaires directement depuis la modification de votre laverie.
+    </div>
+
+    <p>
+        Si vous estimez que cette décision a été prise par erreur ou si vous avez des questions,
+        n'hésitez pas à nous contacter.
+    </p>
+
+    <center>
+        <a href="{{ frontendUrl }}/contact" class="button">Nous contacter</a>
+    </center>
+
+    <p class="small-text">
+        Cordialement,<br>
+        L'équipe LaundryMap
+    </p>
+{% endblock %}
