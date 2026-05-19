@@ -19,6 +19,19 @@ class LaundryFavoriteRepository extends ServiceEntityRepository
 
     public function getFavoritesLaundriesByUser(int $offset, int $limit, User $user): array
     {
+        $laundryIds = $this->createQueryBuilder('fl')
+            ->select('IDENTITY(fl.laundry) as laundry_id')
+            ->where('fl.user = :user')
+            ->setParameter('user', $user->getId())
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        if (empty($laundryIds)) {
+            return [];
+        }
+
         return $this->createQueryBuilder('fl')
             ->addSelect('l', 'address', 'logo', 'closures', 'exceptionalClosures')
             ->leftJoin('fl.laundry', 'l')
@@ -26,10 +39,10 @@ class LaundryFavoriteRepository extends ServiceEntityRepository
             ->leftJoin('l.logo', 'logo')
             ->leftJoin('l.laundryClosures', 'closures')
             ->leftJoin('l.laundryExceptionalClosures', 'exceptionalClosures')
-            ->setFirstResult($offset)
-            ->setMaxResults($limit)
             ->where('fl.user = :user')
+            ->andWhere('IDENTITY(fl.laundry) IN (:laundryIds)')
             ->setParameter('user', $user->getId())
+            ->setParameter('laundryIds', $laundryIds)
             ->getQuery()
             ->getResult();
     }
