@@ -698,8 +698,10 @@ class AdminController extends AbstractController
     {
         return match (mb_strtolower(trim($paymentMethodName))) {
             'card' => 'professional.laundry_form.payment_card',
-            'cash' => 'professional.laundry_form.payment_cash',
             'contactless' => 'professional.laundry_form.payment_contactless',
+            'coins' => 'professional.laundry_form.payment_coins',
+            'bills' => 'professional.laundry_form.payment_bills',
+            'fidelity' => 'professional.laundry_form.payment_fidelity',
             default => null,
         };
     }

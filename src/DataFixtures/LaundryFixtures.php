@@ -109,11 +109,11 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
             PaymentMethodFixtures::CARD_NAME
         );
 
-        $paymentCash = $this->findOneOrFail(
+        $paymentCoins = $this->findOneOrFail(
             $manager,
             PaymentMethod::class,
-            ['name' => PaymentMethodFixtures::CASH_NAME],
-            PaymentMethodFixtures::CASH_NAME
+            ['name' => PaymentMethodFixtures::COINS_NAME],
+            PaymentMethodFixtures::COINS_NAME
         );
 
         $paymentContactless = $this->findOneOrFail(
@@ -734,7 +734,7 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
 
         $laundryPayment4 = new LaundryPayment();
         $laundryPayment4->setLaundry($laundry2);
-        $laundryPayment4->setPaymentMethod($paymentCash);
+        $laundryPayment4->setPaymentMethod($paymentCoins);
         $manager->persist($laundryPayment4);
 
         foreach ($approvedLaundries as $index => $approvedLaundry) {

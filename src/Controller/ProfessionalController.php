@@ -273,6 +273,8 @@ class ProfessionalController extends AbstractController
         $machines = is_array($centrale['machines'] ?? null) ? $centrale['machines'] : [];
         $machineFields = $this->buildMachineFieldsFromWiLine($machines);
 
+        $paymentMethodIds = $this->resolvePaymentMethodIdsFromWiLine($centrale, $entityManager);
+
         return $this->json([
             'clientCode' => $clientCode,
             'laundry' => [
@@ -285,6 +287,7 @@ class ProfessionalController extends AbstractController
                 'country' => $centrale['country'] ?? null,
                 'phone' => $centrale['phone'] ?? null,
                 'openingHours' => $centrale['opening_hours'] ?? null,
+                'paymentMethodIds' => $paymentMethodIds,
             ],
             'machines' => $machines,
             'autoFill' => $machineFields,
@@ -669,12 +672,43 @@ class ProfessionalController extends AbstractController
         };
     }
 
+    /**
+     * @return int[]
+     */
+    private function resolvePaymentMethodIdsFromWiLine(array $centrale, EntityManagerInterface $entityManager): array
+    {
+        $acceptedNames = [];
+
+        if (!empty($centrale['coin_accepted'])) {
+            $acceptedNames[] = 'Coins';
+        }
+        if (!empty($centrale['bill_accepted'])) {
+            $acceptedNames[] = 'Bills';
+        }
+        if (!empty($centrale['card_accepted'])) {
+            $acceptedNames[] = 'Card';
+        }
+        if (!empty($centrale['fidelity_accepted'])) {
+            $acceptedNames[] = 'Fidelity';
+        }
+
+        if (empty($acceptedNames)) {
+            return [];
+        }
+
+        $methods = $entityManager->getRepository(PaymentMethod::class)->findBy(['name' => $acceptedNames]);
+
+        return array_values(array_map(static fn (PaymentMethod $pm): int => $pm->getId(), $methods));
+    }
+
     private function getPaymentMethodTranslationKey(string $paymentMethodName): ?string
     {
         return match (mb_strtolower(trim($paymentMethodName))) {
             'card' => 'professional.laundry_form.payment_card',
-            'cash' => 'professional.laundry_form.payment_cash',
             'contactless' => 'professional.laundry_form.payment_contactless',
+            'coins' => 'professional.laundry_form.payment_coins',
+            'bills' => 'professional.laundry_form.payment_bills',
+            'fidelity' => 'professional.laundry_form.payment_fidelity',
             default => null,
         };
     }
@@ -966,7 +1000,8 @@ class ProfessionalController extends AbstractController
 
     private function syncLaundryEquipments(Laundry $laundry, array $payload, EntityManagerInterface $entityManager): void
     {
-        $hasMachinePayload = array_key_exists('washingMachines6kg', $payload)
+        $hasNewFormat = array_key_exists('equipments', $payload) && is_array($payload['equipments']);
+        $hasLegacyFormat = array_key_exists('washingMachines6kg', $payload)
             || array_key_exists('washingMachines8kg', $payload)
             || array_key_exists('washingMachines10kg', $payload)
             || array_key_exists('washingMachines12kgPlus', $payload)
@@ -975,12 +1010,36 @@ class ProfessionalController extends AbstractController
             || array_key_exists('dryers10kg', $payload)
             || array_key_exists('dryers12kgPlus', $payload);
 
-        if (!$hasMachinePayload) {
+        if (!$hasNewFormat && !$hasLegacyFormat) {
             return;
         }
 
         foreach ($laundry->getLaundryEquipments()->toArray() as $equipment) {
             $entityManager->remove($equipment);
+        }
+
+        if ($hasNewFormat) {
+            foreach ($payload['equipments'] as $eq) {
+                if (!is_array($eq)) {
+                    continue;
+                }
+                $type = ($eq['type'] ?? '') === 'washing'
+                    ? LaundryEquipmentTypeEnum::WASHING_MACHINE
+                    : LaundryEquipmentTypeEnum::DRYER;
+                $capacity = max(1, (int) ($eq['capacity'] ?? 0));
+                $price = max(0.0, (float) str_replace(',', '.', (string) ($eq['price'] ?? 0)));
+                $duration = $type === LaundryEquipmentTypeEnum::WASHING_MACHINE ? 35 : 20;
+
+                $equipment = new LaundryEquipment();
+                $equipment->setLaundry($laundry);
+                $equipment->setType($type);
+                $equipment->setCapacity($capacity);
+                $equipment->setPrice($price);
+                $equipment->setDuration($duration);
+                $equipment->setName(sprintf('%s %dkg', $type === LaundryEquipmentTypeEnum::WASHING_MACHINE ? 'Washer' : 'Dryer', $capacity));
+                $entityManager->persist($equipment);
+            }
+            return;
         }
 
         $this->createEquipmentsForCapacity($laundry, LaundryEquipmentTypeEnum::WASHING_MACHINE, 6, $payload, 'washingMachines6kg', 'washingPrice6kg', 35, $entityManager);
@@ -1034,31 +1093,11 @@ class ProfessionalController extends AbstractController
 
     /**
      * @param array<int, array<string, mixed>> $machines
-     * @return array<string, int|float|null>
+     * @return array<string, mixed>
      */
     private function buildMachineFieldsFromWiLine(array $machines): array
     {
-        $machineCounts = [
-            'washingMachines6kg' => 0,
-            'washingMachines8kg' => 0,
-            'washingMachines10kg' => 0,
-            'washingMachines12kgPlus' => 0,
-            'dryers6kg' => 0,
-            'dryers8kg' => 0,
-            'dryers10kg' => 0,
-            'dryers12kgPlus' => 0,
-        ];
-
-        $prices = [
-            'washingPrice6kg' => null,
-            'washingPrice8kg' => null,
-            'washingPrice10kg' => null,
-            'washingPrice12kgPlus' => null,
-            'dryingPrice6kg' => null,
-            'dryingPrice8kg' => null,
-            'dryingPrice10kg' => null,
-            'dryingPrice12kgPlus' => null,
-        ];
+        $equipments = [];
 
         foreach ($machines as $machine) {
             if (!is_array($machine)) {
@@ -1087,42 +1126,17 @@ class ProfessionalController extends AbstractController
                 continue;
             }
 
-            if ($capacity >= 12) {
-                $capacityKey = '12kgPlus';
-            } elseif ($capacity >= 9) {
-                $capacityKey = '10kg';
-            } elseif ($capacity >= 5) {
-                $capacityKey = '8kg';
-            } else {
-                $capacityKey = '6kg';
-            }
+            $priceInCents = $machine['price'] ?? null;
+            $price = is_numeric($priceInCents) ? round(((float) $priceInCents) / 100, 2) : 0.0;
 
-            if ($isWashingMachine) {
-                $countField = sprintf('washingMachines%s', $capacityKey);
-                $priceField = sprintf('washingPrice%s', $capacityKey);
-            } else {
-                $countField = sprintf('dryers%s', $capacityKey);
-                $priceField = sprintf('dryingPrice%s', $capacityKey);
-            }
-
-            if (!array_key_exists($countField, $machineCounts)) {
-                continue;
-            }
-
-            $machineCounts[$countField]++;
-
-            if ($prices[$priceField] === null) {
-                $priceInCents = $machine['price'] ?? null;
-                if (is_numeric($priceInCents)) {
-                    $prices[$priceField] = round(((float) $priceInCents) / 100, 2);
-                }
-            }
+            $equipments[] = [
+                'type' => $isWashingMachine ? 'washing' : 'drying',
+                'capacity' => $capacity,
+                'price' => $price,
+            ];
         }
 
-        return [
-            ...$machineCounts,
-            ...$prices,
-        ];
+        return ['equipments' => $equipments];
     }
 
     private function extractWiLineCapacity(string $typeName, string $fallbackName): ?int
@@ -1254,50 +1268,18 @@ class ProfessionalController extends AbstractController
             }
         }
 
-        $machineCounts = [
-            'washingMachines6kg' => 0,
-            'washingMachines8kg' => 0,
-            'washingMachines10kg' => 0,
-            'washingMachines12kgPlus' => 0,
-            'dryers6kg' => 0,
-            'dryers8kg' => 0,
-            'dryers10kg' => 0,
-            'dryers12kgPlus' => 0,
-        ];
-
-        $prices = [
-            'washingPrice6kg' => null,
-            'washingPrice8kg' => null,
-            'washingPrice10kg' => null,
-            'washingPrice12kgPlus' => null,
-            'dryingPrice6kg' => null,
-            'dryingPrice8kg' => null,
-            'dryingPrice10kg' => null,
-            'dryingPrice12kgPlus' => null,
-        ];
-
+        $equipments = [];
         foreach ($laundry->getLaundryEquipments() as $equipment) {
-            $capacity = $equipment->getCapacity();
-            $capacityKey = $capacity >= 12 ? '12kgPlus' : sprintf('%dkg', $capacity);
-
-            if ($equipment->getType() === LaundryEquipmentTypeEnum::WASHING_MACHINE) {
-                $countField = sprintf('washingMachines%s', $capacityKey);
-                $priceField = sprintf('washingPrice%s', $capacityKey);
-            } elseif ($equipment->getType() === LaundryEquipmentTypeEnum::DRYER) {
-                $countField = sprintf('dryers%s', $capacityKey);
-                $priceField = sprintf('dryingPrice%s', $capacityKey);
-            } else {
+            $type = $equipment->getType();
+            if ($type !== LaundryEquipmentTypeEnum::WASHING_MACHINE && $type !== LaundryEquipmentTypeEnum::DRYER) {
                 continue;
             }
-
-            if (!array_key_exists($countField, $machineCounts)) {
-                continue;
-            }
-
-            $machineCounts[$countField]++;
-            if ($prices[$priceField] === null) {
-                $prices[$priceField] = $equipment->getPrice();
-            }
+            $equipments[] = [
+                'id' => $equipment->getId(),
+                'type' => $type === LaundryEquipmentTypeEnum::WASHING_MACHINE ? 'washing' : 'drying',
+                'capacity' => $equipment->getCapacity(),
+                'price' => $equipment->getPrice(),
+            ];
         }
 
         $serviceIds = [];
@@ -1346,22 +1328,7 @@ class ProfessionalController extends AbstractController
             'paymentMethodIds' => array_values(array_unique($paymentMethodIds)),
             'openingHours' => $openingHours,
             'openingHoursExtra' => $openingHoursExtra,
-            'washingMachines6kg' => $machineCounts['washingMachines6kg'],
-            'washingMachines8kg' => $machineCounts['washingMachines8kg'],
-            'washingMachines10kg' => $machineCounts['washingMachines10kg'],
-            'washingMachines12kgPlus' => $machineCounts['washingMachines12kgPlus'],
-            'dryers6kg' => $machineCounts['dryers6kg'],
-            'dryers8kg' => $machineCounts['dryers8kg'],
-            'dryers10kg' => $machineCounts['dryers10kg'],
-            'dryers12kgPlus' => $machineCounts['dryers12kgPlus'],
-            'washingPrice6kg' => $prices['washingPrice6kg'] ?? '',
-            'washingPrice8kg' => $prices['washingPrice8kg'] ?? '',
-            'washingPrice10kg' => $prices['washingPrice10kg'] ?? '',
-            'washingPrice12kgPlus' => $prices['washingPrice12kgPlus'] ?? '',
-            'dryingPrice6kg' => $prices['dryingPrice6kg'] ?? '',
-            'dryingPrice8kg' => $prices['dryingPrice8kg'] ?? '',
-            'dryingPrice10kg' => $prices['dryingPrice10kg'] ?? '',
-            'dryingPrice12kgPlus' => $prices['dryingPrice12kgPlus'] ?? '',
+            'equipments' => $equipments,
         ];
     }
 }
