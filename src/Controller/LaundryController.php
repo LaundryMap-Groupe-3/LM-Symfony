@@ -57,4 +57,18 @@ class LaundryController extends AbstractController
             'stats' => $stats
         ]);
     }
+
+    #[Route('/api/laundry/{id}', name: 'api_laundry_content', methods: ['GET'])]
+    public function getLaundry(int $id): JsonResponse
+    {
+        $laundry = $this->laundryRepository->find($id);
+        if(!$laundry) {
+            return $this->json(['message' => 'errors.laundry_not_found'], 404);
+        }
+
+        $laundryData = $this->serializer->normalize($laundry, null, ['groups' => ['laundry:read']]);
+
+        return  $this->json(['laundry' => $laundryData], 200);
+
+    }
 }

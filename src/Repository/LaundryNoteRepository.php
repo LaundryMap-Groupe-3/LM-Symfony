@@ -68,6 +68,17 @@ class LaundryNoteRepository extends ServiceEntityRepository
     public function countCommentsByLaundry(Laundry $laundry): ?int
     {
         return $this->createQueryBuilder('ln')
+            ->select('COUNT(ln.id)')
+            ->where('ln.laundry = :laundry')
+            ->setParameter('laundry', $laundry->getId())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function getAverageRatingByLaundry(Laundry $laundry): ?int
+    {
+        return $this->createQueryBuilder('ln')
+            ->select('AVG(ln.rating)')
             ->where('ln.laundry = :laundry')
             ->setParameter('laundry', $laundry->getId())
             ->getQuery()

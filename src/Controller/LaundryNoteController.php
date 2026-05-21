@@ -6,7 +6,9 @@ use App\Entity\Laundry;
 use App\Entity\LaundryNote;
 use App\Entity\User;
 use App\Repository\LaundryNoteRepository;
+use App\Repository\LaundryRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,6 +20,7 @@ class LaundryNoteController extends AbstractController
 {
     public function __construct(
         private readonly LaundryNoteRepository $laundryNoteRepository,
+        private readonly LaundryRepository $laundryRepository,
         private SerializerInterface $serializer,
         private EntityManagerInterface $entityManager,
     )
@@ -26,7 +29,7 @@ class LaundryNoteController extends AbstractController
 
     #[Route('/api/laundry/{id}/comment/add', name: 'api_laundry_note_add', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function addLaundryComment(Request $request, Laundry $laundry): JsonResponse
+    public function addLaundryComment(Request $request, int $id): JsonResponse
     {
         $user = $this->getUser();
         if($this->laundryNoteRepository->findOneBy(['user' => $user, 'laundry' => $laundry])){
@@ -43,6 +46,11 @@ class LaundryNoteController extends AbstractController
             return $this->json(['errors' => $errors], 400);
         }
 
+        $laundry = $this->laundryRepository->find($id);
+        if(!$laundry) {
+            return $this->json(['message' => 'errors.laundry_not_found'], 404);
+        }
+
         $laundryNote = new LaundryNote();
         $laundryNote->setLaundry($laundry);
         $laundryNote->setUser($user);
@@ -53,15 +61,21 @@ class LaundryNoteController extends AbstractController
 
         $data = $this->serializer->normalize($laundryNote, null, ['groups' => ['laundry:read']]);
 
-        return $this->json(['laundryNote' => $data],201);
+        return $this->json(['laundryNote' => $data], 201);
     }
 
 
     #[Route('/api/laundry/{id}/comment/remove', name: 'api_laundry_note_remove', methods: ['DELETE'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function removeLaundryComment(Laundry $laundry): JsonResponse
+    public function removeLaundryComment(int $id): JsonResponse
     {
         $user = $this->getUser();
+
+        $laundry = $this->laundryRepository->find($id);
+        if(!$laundry) {
+            return $this->json(['message' => 'errors.laundry_not_found'], 404);
+        }
+
         $laundryNote = $this->laundryNoteRepository->findOneBy(['user' => $user, 'laundry' => $laundry]);
         if($laundryNote) {
             $this->entityManager->remove($laundryNote);
@@ -73,9 +87,9 @@ class LaundryNoteController extends AbstractController
         return $this->json(['message' => 'errors.laundry_note_not_found'], 404);
     }
 
-    #[Route('/api/laundry/{id}/comment/{comment_id}/update', name: 'api_laundry_note_update', methods: ['PUT'])]
+    #[Route('/api/laundry/{id}/comment/{laundryNoteId}/update', name: 'api_laundry_note_update', methods: ['PUT'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function updateLaundryComment(Request $request, Laundry $laundry, LaundryNote $laundryNote): JsonResponse
+    public function updateLaundryComment(Request $request, Laundry $laundry, #[MapEntity(id: 'laundryNoteId')] LaundryNote $laundryNote): JsonResponse
     {
         $user = $this->getUser();
         if(!$this->laundryNoteRepository->findOneBy(['user' => $user, 'laundry' => $laundry])){
@@ -138,15 +152,21 @@ class LaundryNoteController extends AbstractController
     }
 
     #[Route('/api/laundry/{id}/comments', name: 'api_laundry_note_all_laundry', methods: ['GET'])]
-    public function getLaundryNotesByLaundry(Request $request, Laundry $laundry): JsonResponse
+    public function getLaundryNotesByLaundry(Request $request, int $id): JsonResponse
     {
         try {
+            $laundry = $this->laundryRepository->find($id);
+            if(!$laundry) {
+                return $this->json(['message' => 'errors.laundry_not_found'], 404);
+            }
+
             $page = max(1, (int) $request->query->get('page', 1));
             $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
             $offset = ($page - 1) * $limit;
 
             $comments = $this->laundryNoteRepository->getCommentsByLaundry($laundry, $offset, $limit);
             $total = $this->laundryNoteRepository->countCommentsByLaundry($laundry);
+            $average = $this->laundryNoteRepository->getAverageRatingByLaundry($laundry);
 
             $data = $this->serializer->normalize($comments, null, ['groups' => ['laundry:read']]);
 
@@ -156,6 +176,7 @@ class LaundryNoteController extends AbstractController
                     'pagination' => [
                         'page' => $page,
                         'limit' => $limit,
+                        'average' => $average,
                         'total' => $total,
                         'pages' => (int) ceil($total / $limit),
                     ],
