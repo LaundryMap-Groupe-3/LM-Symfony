@@ -13,14 +13,14 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class LaundryNoteController extends AbstractController
 {
     public function __construct(
         private readonly LaundryNoteRepository $laundryNoteRepository,
         private readonly LaundryRepository $laundryRepository,
-        private SerializerInterface $serializer,
+        private NormalizerInterface $serializer,
         private EntityManagerInterface $entityManager,
     )
     {
