@@ -29,6 +29,7 @@ class Professional
     private ?string $companyName = null;
 
     #[ORM\Column(length: 20, nullable: true)]
+    #[Groups(['laundry:read'])]
     private ?string $phone = null;
 
     #[ORM\Column(type: 'string', enumType: ProfessionalStatusEnum::class)]

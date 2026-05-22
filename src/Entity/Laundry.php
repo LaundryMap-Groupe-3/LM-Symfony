@@ -29,7 +29,6 @@ class Laundry
 
     #[ORM\Column(nullable: true)]
     #[Groups(['laundry:read'])]
-
     private ?int $wiLineReference = null;
 
     #[ORM\ManyToOne]

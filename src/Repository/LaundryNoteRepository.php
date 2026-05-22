@@ -2,7 +2,9 @@
 
 namespace App\Repository;
 
+use App\Entity\Laundry;
 use App\Entity\LaundryNote;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -32,32 +34,54 @@ class LaundryNoteRepository extends ServiceEntityRepository
         return $stmt->fetchAssociative();
     }
 
-    /**
-     * @param int[] $laundryIds
-     * @return array<int, array{avg_rating: float|null, review_count: int}>
-     */
-    public function getAverageRatingAndCountByLaundryIdsGrouped(array $laundryIds): array
+    public function getCommentsByUser(User $user, int $offset, int $limit): ?array
     {
-        if (empty($laundryIds)) {
-            return [];
-        }
+        return $this->createQueryBuilder('ln')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->where('ln.user = :user')
+            ->setParameter('user', $user->getId())
+            ->getQuery()
+            ->getResult();
+    }
 
-        $conn = $this->getEntityManager()->getConnection();
-        $placeholders = implode(',', array_fill(0, count($laundryIds), '?'));
-        $sql = 'SELECT laundry_id, AVG(rating) as avg_rating, COUNT(id) as review_count FROM laundry_note WHERE laundry_id IN (' . $placeholders . ') GROUP BY laundry_id';
-        $stmt = $conn->executeQuery($sql, $laundryIds);
-        $rows = $stmt->fetchAllAssociative();
+    public function getCommentsByLaundry(Laundry $laundry, int $offset, int $limit): ?array
+    {
+        return $this->createQueryBuilder('ln')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->where('ln.laundry = :laundry')
+            ->setParameter('laundry', $laundry->getId())
+            ->getQuery()
+            ->getResult();
+    }
 
-        $results = [];
-        foreach ($rows as $row) {
-            $laundryId = (int) $row['laundry_id'];
-            $avgRating = $row['avg_rating'] !== null ? round((float) $row['avg_rating'], 2) : null;
-            $results[$laundryId] = [
-                'avg_rating' => $avgRating,
-                'review_count' => (int) $row['review_count'],
-            ];
-        }
+    public function countCommentsByUser(User $user): ?int
+    {
+        return $this->createQueryBuilder('ln')
+            ->where('ln.user = :user')
+            ->setParameter('user', $user->getId())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 
-        return $results;
+    public function countCommentsByLaundry(Laundry $laundry): ?int
+    {
+        return $this->createQueryBuilder('ln')
+            ->select('COUNT(ln.id)')
+            ->where('ln.laundry = :laundry')
+            ->setParameter('laundry', $laundry->getId())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function getAverageRatingByLaundry(Laundry $laundry): ?int
+    {
+        return $this->createQueryBuilder('ln')
+            ->select('AVG(ln.rating)')
+            ->where('ln.laundry = :laundry')
+            ->setParameter('laundry', $laundry->getId())
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 }
