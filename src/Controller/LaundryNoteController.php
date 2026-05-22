@@ -162,7 +162,7 @@ class LaundryNoteController extends AbstractController
             $comments = $this->laundryNoteRepository->getCommentsByUser($user, $offset, $limit);
             $total = $this->laundryNoteRepository->countCommentsByUser($user);
 
-            $data = $this->serializer->normalize($comments, null, ['groups' => ['laundry:read', 'laundry:note']]);
+            $data = $this->serializer->normalize($comments, null, ['groups' => ['laundry:read', 'laundry:note:summary']]);
 
             return JsonResponse::fromJsonString(
                 json_encode([

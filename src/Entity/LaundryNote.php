@@ -19,7 +19,7 @@ class LaundryNote
 
     #[ORM\ManyToOne(inversedBy: 'laundryNotes')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['laundry:note'])]
+    #[Groups(['laundry:note:summary'])]
     private Laundry $laundry;
 
     #[ORM\ManyToOne(inversedBy: 'laundryNotes')]

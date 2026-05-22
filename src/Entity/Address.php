@@ -16,19 +16,19 @@ class Address
     private int $id;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read', 'laundry:note:summary'])]
     private string $address;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read', 'laundry:note:summary'])]
     private string $street;
 
     #[ORM\Column]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read', 'laundry:note:summary'])]
     private int $postalCode;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read', 'laundry:note:summary'])]
     private string $city;
 
     #[ORM\Column(length: 255)]
