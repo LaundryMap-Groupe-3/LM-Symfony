@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\MediaRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: MediaRepository::class)]
 class Media
@@ -11,12 +12,15 @@ class Media
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private int $id;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private string $location;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private string $originalName;
 
     #[ORM\Column]

@@ -34,6 +34,35 @@ class LaundryNoteRepository extends ServiceEntityRepository
         return $stmt->fetchAssociative();
     }
 
+    /**
+     * @param int[] $laundryIds
+     * @return array<int, array{avg_rating: float|null, review_count: int}>
+     */
+    public function getAverageRatingAndCountByLaundryIdsGrouped(array $laundryIds): array
+    {
+        if (empty($laundryIds)) {
+            return [];
+        }
+
+        $rows = $this->createQueryBuilder('ln')
+            ->select('IDENTITY(ln.laundry) as laundry_id, AVG(ln.rating) as avg_rating, COUNT(ln.id) as review_count')
+            ->where('ln.laundry IN (:ids)')
+            ->setParameter('ids', $laundryIds)
+            ->groupBy('ln.laundry')
+            ->getQuery()
+            ->getResult();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(int) $row['laundry_id']] = [
+                'avg_rating' => $row['avg_rating'] !== null ? (float) $row['avg_rating'] : null,
+                'review_count' => (int) $row['review_count'],
+            ];
+        }
+
+        return $result;
+    }
+
     public function getCommentsByUser(User $user, int $offset, int $limit): ?array
     {
         return $this->createQueryBuilder('ln')
@@ -52,13 +81,15 @@ class LaundryNoteRepository extends ServiceEntityRepository
             ->setMaxResults($limit)
             ->where('ln.laundry = :laundry')
             ->setParameter('laundry', $laundry->getId())
+            ->orderBy('ln.ratedAt', 'DESC')
             ->getQuery()
             ->getResult();
     }
 
-    public function countCommentsByUser(User $user): ?int
+    public function countCommentsByUser(User $user): int
     {
-        return $this->createQueryBuilder('ln')
+        return (int) $this->createQueryBuilder('ln')
+            ->select('COUNT(ln.id)')
             ->where('ln.user = :user')
             ->setParameter('user', $user->getId())
             ->getQuery()

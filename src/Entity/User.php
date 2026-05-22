@@ -17,6 +17,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private int $id;
 
     #[ORM\Column(length: 255)]

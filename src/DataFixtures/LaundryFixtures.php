@@ -7,8 +7,6 @@ use App\Entity\Laundry;
 use App\Entity\LaundryClosure;
 use App\Entity\LaundryEquipment;
 use App\Entity\LaundryFavorite;
-use App\Entity\LaundryNote;
-use App\Entity\LaundryNoteReport;
 use App\Entity\LaundryPayment;
 use App\Entity\LaundryMedia;
 use App\Entity\LaundryService;
@@ -20,7 +18,6 @@ use App\Entity\User;
 use App\Enum\DayOfWeekEnum;
 use App\Enum\GeolocalizationStatusEnum;
 use App\Enum\LaundryEquipmentTypeEnum;
-use App\Enum\LaundryNoteReportReasonEnum;
 use App\Enum\LaundryStatusEnum;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -737,6 +734,16 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $laundryPayment4->setPaymentMethod($paymentCoins);
         $manager->persist($laundryPayment4);
 
+        $equipmentTemplates = [
+            ['name' => 'Washer Standard 7kg', 'type' => LaundryEquipmentTypeEnum::WASHING_MACHINE, 'capacity' => 7, 'price' => 4.50, 'duration' => 35],
+            ['name' => 'Washer Large 10kg', 'type' => LaundryEquipmentTypeEnum::WASHING_MACHINE, 'capacity' => 10, 'price' => 5.90, 'duration' => 40],
+            ['name' => 'Washer XL 14kg', 'type' => LaundryEquipmentTypeEnum::WASHING_MACHINE, 'capacity' => 14, 'price' => 7.50, 'duration' => 45],
+            ['name' => 'Dryer Standard 8kg', 'type' => LaundryEquipmentTypeEnum::DRYER, 'capacity' => 8, 'price' => 3.00, 'duration' => 20],
+            ['name' => 'Dryer Large 14kg', 'type' => LaundryEquipmentTypeEnum::DRYER, 'capacity' => 14, 'price' => 4.00, 'duration' => 25],
+        ];
+
+        $equipmentRefBase = 4000;
+
         foreach ($approvedLaundries as $index => $approvedLaundry) {
             $laundryService = new LaundryService();
             $laundryService->setLaundry($approvedLaundry);
@@ -747,6 +754,28 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
             $laundryPayment->setLaundry($approvedLaundry);
             $laundryPayment->setPaymentMethod($index % 3 === 0 ? $paymentContactless : $paymentCard);
             $manager->persist($laundryPayment);
+
+            $washerTemplate = $equipmentTemplates[$index % 3];
+            $washer = new LaundryEquipment();
+            $washer->setLaundry($approvedLaundry);
+            $washer->setEquipmentReference($equipmentRefBase + $index * 10 + 1);
+            $washer->setName($washerTemplate['name']);
+            $washer->setType($washerTemplate['type']);
+            $washer->setCapacity($washerTemplate['capacity']);
+            $washer->setPrice($washerTemplate['price']);
+            $washer->setDuration($washerTemplate['duration']);
+            $manager->persist($washer);
+
+            $dryerTemplate = $equipmentTemplates[3 + ($index % 2)];
+            $dryer = new LaundryEquipment();
+            $dryer->setLaundry($approvedLaundry);
+            $dryer->setEquipmentReference($equipmentRefBase + $index * 10 + 2);
+            $dryer->setName($dryerTemplate['name']);
+            $dryer->setType($dryerTemplate['type']);
+            $dryer->setCapacity($dryerTemplate['capacity']);
+            $dryer->setPrice($dryerTemplate['price']);
+            $dryer->setDuration($dryerTemplate['duration']);
+            $manager->persist($dryer);
         }
 
         $favorite1 = new LaundryFavorite();
@@ -758,34 +787,6 @@ class LaundryFixtures extends Fixture implements DependentFixtureInterface
         $favorite2->setLaundry($laundry2);
         $favorite2->setUser($user2);
         $manager->persist($favorite2);
-
-        $note1 = new LaundryNote();
-        $note1->setLaundry($laundry1);
-        $note1->setUser($user1);
-        $note1->setRating(5);
-        $note1->setRatedAt(new \DateTime('2026-04-01 20:15:00'));
-        $note1->setComment('Very clean and machines are fast.');
-        $note1->setCommentedAt(new \DateTime('2026-04-01 20:17:00'));
-        $note1->setResponse('Thank you for your feedback.');
-        $note1->setRespondedAt(new \DateTime('2026-04-02 09:00:00'));
-        $manager->persist($note1);
-
-        $note2 = new LaundryNote();
-        $note2->setLaundry($laundry2);
-        $note2->setUser($user2);
-        $note2->setRating(3);
-        $note2->setRatedAt(new \DateTime('2026-04-03 19:05:00'));
-        $note2->setComment('One dryer was out of order.');
-        $note2->setCommentedAt(new \DateTime('2026-04-03 19:08:00'));
-        $manager->persist($note2);
-
-        $noteReport = new LaundryNoteReport();
-        $noteReport->setLaundryNote($note2);
-        $noteReport->setUser($user1);
-        $noteReport->setCreatedAt(new \DateTime('2026-04-04 10:00:00'));
-        $noteReport->setReason(LaundryNoteReportReasonEnum::EQUIPMENT_BROKEN);
-        $noteReport->setComment('Issue confirmed during my visit.');
-        $manager->persist($noteReport);
 
         $manager->flush();
     }

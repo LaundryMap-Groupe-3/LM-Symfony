@@ -15,7 +15,7 @@ class Laundry
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read', 'laundry:note'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundries')]

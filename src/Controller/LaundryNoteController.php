@@ -8,7 +8,6 @@ use App\Entity\User;
 use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -32,8 +31,10 @@ class LaundryNoteController extends AbstractController
     public function addLaundryComment(Request $request, int $id): JsonResponse
     {
         $user = $this->getUser();
-        if($this->laundryNoteRepository->findOneBy(['user' => $user, 'laundry' => $laundry])){
-            return $this->json(['message' => 'Already have comment'], 200);
+
+        $laundry = $this->laundryRepository->find($id);
+        if (!$laundry) {
+            return $this->json(['message' => 'errors.laundry_not_found'], 404);
         }
 
         $payload = json_decode($request->getContent(), true);
@@ -46,24 +47,36 @@ class LaundryNoteController extends AbstractController
             return $this->json(['errors' => $errors], 400);
         }
 
-        $laundry = $this->laundryRepository->find($id);
-        if(!$laundry) {
-            return $this->json(['message' => 'errors.laundry_not_found'], 404);
+        $laundryNote = $this->laundryNoteRepository->findOneBy(['user' => $user, 'laundry' => $laundry]);
+        $isNew = $laundryNote === null;
+
+        if ($isNew) {
+            $laundryNote = new LaundryNote();
+            $laundryNote->setLaundry($laundry);
+            $laundryNote->setUser($user);
         }
 
-        $laundryNote = new LaundryNote();
-        $laundryNote->setLaundry($laundry);
-        $laundryNote->setUser($user);
-        $laundryNote->setComment($payload['comment']);
-        $laundryNote->setRating($payload['note']);
+        $laundryNote->setRating((int) $payload['note']);
+        $laundryNote->setRatedAt(new \DateTime());
 
+        $comment = $payload['comment'] ?? null;
+        if ($comment !== null && $comment !== '') {
+            $laundryNote->setComment($comment);
+            $laundryNote->setCommentedAt(new \DateTime());
+        } else {
+            $laundryNote->setComment(null);
+            $laundryNote->setCommentedAt(null);
+        }
+
+        if ($isNew) {
+            $this->entityManager->persist($laundryNote);
+        }
         $this->entityManager->flush();
 
         $data = $this->serializer->normalize($laundryNote, null, ['groups' => ['laundry:read']]);
 
-        return $this->json(['laundryNote' => $data], 201);
+        return $this->json(['laundryNote' => $data], $isNew ? 201 : 200);
     }
-
 
     #[Route('/api/laundry/{id}/comment/remove', name: 'api_laundry_note_remove', methods: ['DELETE'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
@@ -72,12 +85,12 @@ class LaundryNoteController extends AbstractController
         $user = $this->getUser();
 
         $laundry = $this->laundryRepository->find($id);
-        if(!$laundry) {
+        if (!$laundry) {
             return $this->json(['message' => 'errors.laundry_not_found'], 404);
         }
 
         $laundryNote = $this->laundryNoteRepository->findOneBy(['user' => $user, 'laundry' => $laundry]);
-        if($laundryNote) {
+        if ($laundryNote) {
             $this->entityManager->remove($laundryNote);
             $this->entityManager->flush();
 
@@ -87,12 +100,19 @@ class LaundryNoteController extends AbstractController
         return $this->json(['message' => 'errors.laundry_note_not_found'], 404);
     }
 
-    #[Route('/api/laundry/{id}/comment/{laundryNoteId}/update', name: 'api_laundry_note_update', methods: ['PUT'])]
+    #[Route('/api/laundry/{id}/comment/update', name: 'api_laundry_note_update', methods: ['PUT'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function updateLaundryComment(Request $request, Laundry $laundry, #[MapEntity(id: 'laundryNoteId')] LaundryNote $laundryNote): JsonResponse
+    public function updateLaundryComment(Request $request, int $id): JsonResponse
     {
         $user = $this->getUser();
-        if(!$this->laundryNoteRepository->findOneBy(['user' => $user, 'laundry' => $laundry])){
+
+        $laundry = $this->laundryRepository->find($id);
+        if (!$laundry) {
+            return $this->json(['message' => 'errors.laundry_not_found'], 404);
+        }
+
+        $laundryNote = $this->laundryNoteRepository->findOneBy(['user' => $user, 'laundry' => $laundry]);
+        if (!$laundryNote) {
             return $this->json(['message' => 'errors.laundry_note_not_found'], 404);
         }
 
@@ -106,14 +126,23 @@ class LaundryNoteController extends AbstractController
             return $this->json(['errors' => $errors], 400);
         }
 
-        $laundryNote->setComment($payload['comment']);
-        $laundryNote->setRating($payload['note']);
+        $laundryNote->setRating((int) $payload['note']);
+        $laundryNote->setRatedAt(new \DateTime());
+
+        $comment = $payload['comment'] ?? null;
+        if ($comment !== null && $comment !== '') {
+            $laundryNote->setComment($comment);
+            $laundryNote->setCommentedAt(new \DateTime());
+        } else {
+            $laundryNote->setComment(null);
+            $laundryNote->setCommentedAt(null);
+        }
 
         $this->entityManager->flush();
 
         $data = $this->serializer->normalize($laundryNote, null, ['groups' => ['laundry:read']]);
 
-        return $this->json(['laundryNote' => $data], 201);
+        return $this->json(['laundryNote' => $data], 200);
     }
 
     #[Route('/api/me/comments', name: 'api_laundry_note_all_me', methods: ['GET'])]
@@ -133,7 +162,7 @@ class LaundryNoteController extends AbstractController
             $comments = $this->laundryNoteRepository->getCommentsByUser($user, $offset, $limit);
             $total = $this->laundryNoteRepository->countCommentsByUser($user);
 
-            $data = $this->serializer->normalize($comments, null, ['groups' => ['laundry:read']]);
+            $data = $this->serializer->normalize($comments, null, ['groups' => ['laundry:read', 'laundry:note']]);
 
             return JsonResponse::fromJsonString(
                 json_encode([
@@ -142,7 +171,7 @@ class LaundryNoteController extends AbstractController
                         'page' => $page,
                         'limit' => $limit,
                         'total' => $total,
-                        'pages' => (int) ceil($total / $limit),
+                        'pages' => (int) ceil($total / max(1, $limit)),
                     ],
                 ])
             );
@@ -156,7 +185,7 @@ class LaundryNoteController extends AbstractController
     {
         try {
             $laundry = $this->laundryRepository->find($id);
-            if(!$laundry) {
+            if (!$laundry) {
                 return $this->json(['message' => 'errors.laundry_not_found'], 404);
             }
 
@@ -176,9 +205,9 @@ class LaundryNoteController extends AbstractController
                     'pagination' => [
                         'page' => $page,
                         'limit' => $limit,
-                        'average' => $average,
+                        'average' => $average !== null ? round((float) $average, 2) : null,
                         'total' => $total,
-                        'pages' => (int) ceil($total / $limit),
+                        'pages' => (int) ceil($total / max(1, $limit)),
                     ],
                 ])
             );
@@ -187,29 +216,23 @@ class LaundryNoteController extends AbstractController
         }
     }
 
-    private function validateLaundryNotePayload(array $payload): ?array
+    private function validateLaundryNotePayload(array $payload): array
     {
         $errors = [];
 
-        $comment = $payload['comment'];
-        $note = $payload['note'];
+        $note = $payload['note'] ?? null;
+        $comment = $payload['comment'] ?? null;
 
-        if(empty($comment)) {
-            $errors['comment'] = 'validation.comment_required';
-        }
-
-        if(empty($note)) {
+        if ($note === null || $note === '') {
             $errors['note'] = 'validation.note_required';
-        }
-
-        if(strlen($comment) > 500) {
-            $errors['comment'] = 'validation.comment_max_length';
-        }
-
-        if(!is_int($note)) {
+        } elseif (!is_int($note) && !ctype_digit((string) $note)) {
             $errors['note'] = 'validation.note_invalid_format';
-        } elseif ($note < 0 || $note > 5) {
+        } elseif ((int) $note < 1 || (int) $note > 5) {
             $errors['note'] = 'validation.note_out_of_range';
+        }
+
+        if ($comment !== null && strlen($comment) > 500) {
+            $errors['comment'] = 'validation.comment_max_length';
         }
 
         return $errors;
