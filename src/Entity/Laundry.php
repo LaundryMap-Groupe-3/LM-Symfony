@@ -15,7 +15,7 @@ class Laundry
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read', 'laundry:note', 'laundry:note:summary'])]
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundries')]
@@ -33,7 +33,7 @@ class Laundry
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read', 'laundry:note:summary'])]
     private Address $address;
 
     #[ORM\ManyToOne]
@@ -42,7 +42,7 @@ class Laundry
     private ?Media $logo = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read', 'favorite-laundry:read', 'laundry:note:summary'])]
     private string $establishmentName;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -78,7 +78,7 @@ class Laundry
     private Collection $laundryMedias;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryNote::class)]
-    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    #[Groups(['laundry:read:notes', 'favorite-laundry:read'])]
     private Collection $laundryNotes;
 
     #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryService::class)]

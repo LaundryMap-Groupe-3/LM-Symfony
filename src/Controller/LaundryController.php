@@ -8,9 +8,16 @@ use App\Repository\LaundryNoteRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class LaundryController extends AbstractController
 {
+    public function __construct(
+        private LaundryRepository $laundryRepository,
+        private NormalizerInterface $serializer
+    ) {
+    }
+
     #[Route('/api/laundries', name: 'api_laundries', methods: ['GET'])]
     public function getAllLaundries(LaundryRepository $laundryRepository, LaundryNoteRepository $laundryNoteRepository): JsonResponse
     {

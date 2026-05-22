@@ -15,6 +15,7 @@ class Professional
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['laundry:read'])]
     private int $id;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
