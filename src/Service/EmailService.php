@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Entity\EmailVerificationToken;
 use App\Entity\Laundry;
+use App\Entity\LaundryNote;
 use App\Entity\Professional;
 use App\Entity\User;
 use Symfony\Component\Mailer\MailerInterface;
@@ -144,6 +145,32 @@ class EmailService
         } catch (\Exception) {
             return false;
         }
+    }
+
+    public function sendReviewResponseEmail(LaundryNote $laundryNote, bool $isUpdate): void
+    {
+        $author = $laundryNote->getUser();
+        $laundry = $laundryNote->getLaundry();
+
+        $html = $this->twig->render('emails/review_response.html.twig', [
+            'firstName' => $author->getFirstName(),
+            'laundryName' => $laundry->getEstablishmentName(),
+            'rating' => $laundryNote->getRating(),
+            'userComment' => $laundryNote->getComment(),
+            'ownerResponse' => $laundryNote->getResponse() ?? '',
+            'isUpdate' => $isUpdate,
+        ]);
+
+        $subject = $isUpdate
+            ? 'Le propriétaire a modifié sa réponse à votre avis'
+            : 'Le propriétaire a répondu à votre avis';
+
+        $this->send(
+            $author->getEmail(),
+            $this->fullName($author),
+            $subject,
+            $html
+        );
     }
 
     private function send(string $toEmail, string $toName, string $subject, string $html): void
