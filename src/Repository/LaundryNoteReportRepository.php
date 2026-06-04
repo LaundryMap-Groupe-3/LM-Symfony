@@ -15,4 +15,12 @@ class LaundryNoteReportRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, LaundryNoteReport::class);
     }
+
+    public function countAllReports(): int
+    {
+        return $this->createQueryBuilder('r')
+            ->select('COUNT(r.laundryNote)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

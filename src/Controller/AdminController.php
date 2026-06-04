@@ -10,8 +10,10 @@ use App\Enum\InteractionActionEnum;
 use App\Enum\LaundryEquipmentTypeEnum;
 use App\Enum\LaundryStatusEnum;
 use App\Enum\ProfessionalStatusEnum;
+use App\Repository\LaundryNoteReportRepository;
 use App\Repository\LaundryRepository;
 use App\Repository\ProfessionalRepository;
+use App\Repository\UserRepository;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -40,6 +42,129 @@ class AdminController extends AbstractController
         ]);
     }
 
+    #[Route('/api/admin/stats', name: 'api_admin_stats', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getStats(
+        UserRepository $userRepository,
+        ProfessionalRepository $professionalRepository,
+        LaundryRepository $laundryRepository,
+        LaundryNoteReportRepository $noteReportRepository,
+    ): JsonResponse {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        return $this->json([
+            'totalUsers' => $userRepository->countAllUsers(),
+            'totalProfessionals' => $professionalRepository->countAllProfessionals(),
+            'totalLaundries' => $laundryRepository->countAllLaundries(),
+            'totalReports' => $noteReportRepository->countAllReports(),
+        ]);
+    }
+
+    #[Route('/api/admin/users', name: 'api_admin_users_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getAllUsers(
+        Request $request,
+        UserRepository $userRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+        $search = trim((string) $request->query->get('search', ''));
+
+        $users = $userRepository->findAllUsers($limit, $offset, $search);
+        $total = $userRepository->countAllUsersFiltered($search);
+
+        $data = array_map(static function ($u) {
+            return [
+                'id' => $u->getId(),
+                'email' => $u->getEmail(),
+                'firstName' => $u->getFirstName(),
+                'lastName' => $u->getLastName(),
+                'createdAt' => $u->getCreatedAt()->format('c'),
+            ];
+        }, $users);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
+    }
+
+    #[Route('/api/admin/professionals', name: 'api_admin_professionals_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getAllProfessionals(
+        Request $request,
+        ProfessionalRepository $professionalRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+        $search = trim((string) $request->query->get('search', ''));
+        $statusParam = trim((string) $request->query->get('status', ''));
+
+        $statusEnum = null;
+        if ($statusParam !== '') {
+            $statusEnum = ProfessionalStatusEnum::tryFrom($statusParam);
+        }
+
+        $professionals = $professionalRepository->findAllProfessionals($limit, $offset, $search, $statusEnum);
+        $total = $professionalRepository->countAllProfessionalsFiltered($search, $statusEnum);
+
+        $data = array_map(function ($professional) {
+            return [
+                'id' => $professional->getId(),
+                'siren' => $professional->getSiren(),
+                'status' => $professional->getStatus()->value,
+                'companyName' => $professional->getCompanyName(),
+                'user' => [
+                    'id' => $professional->getUser()->getId(),
+                    'email' => $professional->getUser()->getEmail(),
+                    'firstName' => $professional->getUser()->getFirstName(),
+                    'lastName' => $professional->getUser()->getLastName(),
+                    'createdAt' => $professional->getUser()->getCreatedAt()->format('c'),
+                ],
+                'address' => $professional->getAddress() ? [
+                    'street' => $professional->getAddress()->getStreet(),
+                    'postalCode' => $professional->getAddress()->getPostalCode(),
+                    'city' => $professional->getAddress()->getCity(),
+                ] : null,
+            ];
+        }, $professionals);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
+    }
+
     #[Route('/api/admin/professionals/pending/count', name: 'api_admin_professionals_pending_count', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getPendingProfessionalsCount(
@@ -59,7 +184,7 @@ class AdminController extends AbstractController
         }
 
         return $this->json([
-            'total' => $total,
+            'count' => $total,
             'response' => Response::HTTP_OK,
         ]);
     }
@@ -333,6 +458,69 @@ class AdminController extends AbstractController
         $em->flush();
 
         return $this->json(['message' => 'Professional rejected and account deleted successfully']);
+    }
+
+    #[Route('/api/admin/laundries', name: 'api_admin_laundries_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getAllLaundries(
+        Request $request,
+        LaundryRepository $laundryRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+        $search = trim((string) $request->query->get('search', ''));
+        $statusParam = trim((string) $request->query->get('status', ''));
+
+        $statusEnum = null;
+        if ($statusParam !== '') {
+            $statusEnum = LaundryStatusEnum::tryFrom($statusParam);
+        }
+
+        $laundries = $laundryRepository->findAllLaundries($limit, $offset, $search, $statusEnum);
+        $total = $laundryRepository->countAllLaundriesFiltered($search, $statusEnum);
+
+        $data = array_map(function ($laundry) {
+            $address = $laundry->getAddress();
+            $professional = $laundry->getProfessional();
+            $professionalUser = $professional->getUser();
+
+            return [
+                'id' => $laundry->getId(),
+                'establishmentName' => $laundry->getEstablishmentName(),
+                'status' => $laundry->getStatus()->value,
+                'contactEmail' => $laundry->getContactEmail(),
+                'createdAt' => $laundry->getCreatedAt()->format('c'),
+                'address' => $address ? [
+                    'street' => $address->getStreet(),
+                    'postalCode' => $address->getPostalCode(),
+                    'city' => $address->getCity(),
+                ] : null,
+                'professional' => [
+                    'id' => $professional->getId(),
+                    'firstName' => $professionalUser->getFirstName(),
+                    'lastName' => $professionalUser->getLastName(),
+                    'email' => $professionalUser->getEmail(),
+                ],
+            ];
+        }, $laundries);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
     }
 
     #[Route('/api/admin/laundries/{id}', name: 'api_admin_laundries_details', methods: ['GET'])]
