@@ -440,24 +440,147 @@ class AdminController extends AbstractController
         // Envoyer l'email de refus AVANT la suppression (pour avoir accès aux données du professional)
         $emailService->sendProfessionalRejectionEmail($professional, $reason);
 
-        // Supprimer les laveries (et leurs historiques) avant le professionnel pour éviter les violations FK
+        // Enregistrer l'action de rejet dans l'historique
+        $interaction = new ProfessionalInteractionHistory();
+        $interaction->setAdmin($user);
+        $interaction->setProfessional($professional);
+        $interaction->setAction(InteractionActionEnum::REJECT);
+        $interaction->setActionReason($reason);
+        $interaction->setCreatedAt(new \DateTime());
+        $em->persist($interaction);
+
+        // Supprimer les laveries avant le professionnel (les LaundryInteractionHistory sont conservés via SET NULL)
         foreach ($professional->getLaundries() as $laundry) {
-            foreach ($laundry->getLaundryInteractionHistories() as $laundryInteraction) {
-                $em->remove($laundryInteraction);
-            }
             $em->remove($laundry);
         }
 
-        // Supprimer les interactions d'historique du professionnel (orphelins)
-        foreach ($professional->getProfessionalInteractionHistories() as $interaction) {
-            $em->remove($interaction);
-        }
-
-        // Supprimer le professionnel et son utilisateur associé en cascade
+        // Supprimer le professionnel (les ProfessionalInteractionHistory sont conservés via SET NULL)
         $em->remove($professional);
         $em->flush();
 
         return $this->json(['message' => 'Professional rejected and account deleted successfully']);
+    }
+
+    #[Route('/api/admin/history', name: 'api_admin_history', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getHistory(
+        Request $request,
+        EntityManagerInterface $em
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $type = $request->query->get('type', 'all');
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = max(1, (int) $request->query->get('limit', 15));
+        $offset = ($page - 1) * $limit;
+
+        $entries = [];
+        $total = 0;
+
+        if ($type === 'professionals' || $type === 'all') {
+            $qb = $em->createQueryBuilder()
+                ->select('h')
+                ->from(ProfessionalInteractionHistory::class, 'h')
+                ->leftJoin('h.admin', 'a')
+                ->leftJoin('h.professional', 'p')
+                ->orderBy('h.createdAt', 'DESC');
+
+            if ($type === 'professionals') {
+                $qb->setFirstResult($offset)->setMaxResults($limit);
+                $total = (int) (clone $qb)->select('COUNT(h.id)')->getQuery()->getSingleScalarResult();
+                $qb->select('h');
+            }
+
+            foreach ($qb->getQuery()->getResult() as $h) {
+                $pro = $h->getProfessional();
+                $proName = $pro
+                    ? ($pro->getCompanyName() ?? ($pro->getUser() ? $pro->getUser()->getFirstName() . ' ' . $pro->getUser()->getLastName() : null))
+                    : null;
+                $entries[] = [
+                    'id' => $h->getId(),
+                    'type' => 'professional',
+                    'action' => $h->getAction()->value,
+                    'actionReason' => $h->getActionReason(),
+                    'createdAt' => $h->getCreatedAt()->format('c'),
+                    'admin' => $h->getAdmin() ? $h->getAdmin()->getEmail() : null,
+                    'target' => $proName,
+                ];
+            }
+        }
+
+        if ($type === 'laundries' || $type === 'all') {
+            $qb = $em->createQueryBuilder()
+                ->select('h')
+                ->from(LaundryInteractionHistory::class, 'h')
+                ->leftJoin('h.admin', 'a')
+                ->leftJoin('h.laundry', 'l')
+                ->orderBy('h.createdAt', 'DESC');
+
+            if ($type === 'laundries') {
+                $qb->setFirstResult($offset)->setMaxResults($limit);
+                $total = (int) (clone $qb)->select('COUNT(h.id)')->getQuery()->getSingleScalarResult();
+                $qb->select('h');
+            }
+
+            foreach ($qb->getQuery()->getResult() as $h) {
+                $entries[] = [
+                    'id' => $h->getId(),
+                    'type' => 'laundry',
+                    'action' => $h->getAction()->value,
+                    'actionReason' => $h->getActionReason(),
+                    'createdAt' => $h->getCreatedAt()->format('c'),
+                    'admin' => $h->getAdmin() ? $h->getAdmin()->getEmail() : null,
+                    'target' => $h->getLaundry() ? $h->getLaundry()->getEstablishmentName() : null,
+                ];
+            }
+        }
+
+        if ($type === 'users' || $type === 'all') {
+            $qb = $em->createQueryBuilder()
+                ->select('h')
+                ->from(\App\Entity\UserInteractionHistory::class, 'h')
+                ->leftJoin('h.admin', 'a')
+                ->leftJoin('h.user', 'u')
+                ->orderBy('h.createdAt', 'DESC');
+
+            if ($type === 'users') {
+                $qb->setFirstResult($offset)->setMaxResults($limit);
+                $total = (int) (clone $qb)->select('COUNT(h.id)')->getQuery()->getSingleScalarResult();
+                $qb->select('h');
+            }
+
+            foreach ($qb->getQuery()->getResult() as $h) {
+                $u = $h->getUser();
+                $entries[] = [
+                    'id' => $h->getId(),
+                    'type' => 'user',
+                    'action' => $h->getAction()->value,
+                    'actionReason' => $h->getActionReason(),
+                    'createdAt' => $h->getCreatedAt()->format('c'),
+                    'admin' => $h->getAdmin() ? $h->getAdmin()->getEmail() : null,
+                    'target' => $u ? $u->getFirstName() . ' ' . $u->getLastName() : null,
+                ];
+            }
+        }
+
+        if ($type === 'all') {
+            usort($entries, fn($a, $b) => strcmp($b['createdAt'], $a['createdAt']));
+            $total = count($entries);
+            $entries = array_slice($entries, $offset, $limit);
+        }
+
+        return $this->json([
+            'data' => $entries,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
     }
 
     #[Route('/api/admin/laundries', name: 'api_admin_laundries_list', methods: ['GET'])]
