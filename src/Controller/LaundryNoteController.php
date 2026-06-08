@@ -6,6 +6,7 @@ use App\Entity\LaundryNote;
 use App\Entity\User;
 use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
+use App\Service\ContentModerationService;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,6 +24,7 @@ class LaundryNoteController extends AbstractController
         private NormalizerInterface $serializer,
         private EntityManagerInterface $entityManager,
         private EmailService $emailService,
+        private ContentModerationService $contentModerationService,
     )
     {
     }
@@ -246,6 +248,9 @@ class LaundryNoteController extends AbstractController
         if (strlen($response) > 500) {
             return $this->json(['errors' => ['response' => 'validation.response_max_length']], 400);
         }
+        if ($this->contentModerationService->containsOffensiveContent($response)) {
+            return $this->json(['errors' => ['response' => 'validation.response_offensive_content']], 400);
+        }
 
         $laundryNote->setResponse($response);
         $laundryNote->setRespondedAt(new \DateTime());
@@ -292,6 +297,9 @@ class LaundryNoteController extends AbstractController
             }
             if (strlen($response) > 500) {
                 return $this->json(['errors' => ['response' => 'validation.response_max_length']], 400);
+            }
+            if ($this->contentModerationService->containsOffensiveContent($response)) {
+                return $this->json(['errors' => ['response' => 'validation.response_offensive_content']], 400);
             }
 
             $laundryNote->setResponse($response);
@@ -353,6 +361,8 @@ class LaundryNoteController extends AbstractController
 
         if ($comment !== null && strlen($comment) > 500) {
             $errors['comment'] = 'validation.comment_max_length';
+        } elseif ($comment !== null && $this->contentModerationService->containsOffensiveContent($comment)) {
+            $errors['comment'] = 'validation.comment_offensive_content';
         }
 
         return $errors;
