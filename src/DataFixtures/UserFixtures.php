@@ -64,6 +64,7 @@ class UserFixtures extends Fixture
         $user4->setStatus(UserStatusEnum::SUSPENDED);
         $user4->setCreatedAt(new \DateTime('2025-12-01'));
         $user4->setLastLoginAt(new \DateTime('2026-02-20'));
+        $user4->setEmailVerifiedAt(new \DateTime('2025-12-01'));
         $manager->persist($user4);
         $this->addReference(self::USER4_REFERENCE, $user4);
 
