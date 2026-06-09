@@ -65,39 +65,39 @@ class Laundry
     #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?\DateTimeInterface $deletedAt = null;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryFavorite::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryFavorite::class, cascade: ['remove'])]
     #[Groups(['laundry:read'])]
     private Collection $laundryFavorites;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryEquipment::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryEquipment::class, cascade: ['remove'])]
     #[Groups(['laundry:read'])]
     private Collection $laundryEquipments;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryMedia::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryMedia::class, cascade: ['remove'])]
     #[Groups(['laundry:read'])]
     private Collection $laundryMedias;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryNote::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryNote::class, cascade: ['remove'])]
     #[Groups(['laundry:read:notes', 'favorite-laundry:read'])]
     private Collection $laundryNotes;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryService::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryService::class, cascade: ['remove'])]
      #[Groups(['laundry:read'])]
     private Collection $laundryServices;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryClosure::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryClosure::class, cascade: ['remove'])]
     #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private Collection $laundryClosures;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryExceptionalClosure::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryExceptionalClosure::class, cascade: ['remove'])]
     #[Groups(['laundry:read'])]
     private Collection $laundryExceptionalClosures;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryInteractionHistory::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryInteractionHistory::class, cascade: ['remove'])]
     #[Groups(['laundry:read'])]
     private Collection $laundryInteractionHistories;
 
-    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryPayment::class)]
+    #[ORM\OneToMany(mappedBy: 'laundry', targetEntity: LaundryPayment::class, cascade: ['remove'])]
     #[Groups(['laundry:read'])]
     private Collection $laundryPayments;
 

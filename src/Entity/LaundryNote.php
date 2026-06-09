@@ -59,7 +59,7 @@ class LaundryNote
     #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?\DateTimeInterface $commentDeletedAt = null;
 
-    #[ORM\OneToMany(mappedBy: 'laundryNote', targetEntity: LaundryNoteReport::class)]
+    #[ORM\OneToMany(mappedBy: 'laundryNote', targetEntity: LaundryNoteReport::class, cascade: ['remove'])]
     private Collection $laundryNoteReports;
 
     public function __construct()
