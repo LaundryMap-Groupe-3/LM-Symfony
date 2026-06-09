@@ -1,0 +1,32 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Réponse à votre avis{% endblock %}
+
+{% block header_color %}#3B82F6{% endblock %}
+{% block button_color %}#3B82F6{% endblock %}
+
+{% block header %}💬 {% if isUpdate %}Réponse modifiée{% else %}Nouvelle réponse{% endif %}{% endblock %}
+
+{% block content %}
+    <p>Bonjour {{ firstName }},</p>
+
+    <p>
+        Le propriétaire de la laverie <strong>{{ laundryName }}</strong>
+        {% if isUpdate %}a modifié sa réponse à{% else %}a répondu à{% endif %} votre avis.
+    </p>
+
+    <div class="success-box">
+        <strong>Votre avis :</strong>
+        {% for i in 1..5 %}{% if i <= rating %}⭐{% endif %}{% endfor %} ({{ rating }}/5)<br>
+        {% if userComment %}{{ userComment }}{% endif %}
+    </div>
+
+    <div style="margin-top: 12px; padding: 14px 16px; background: #EFF6FF; border-left: 3px solid #3B82F6; border-radius: 6px;">
+        <strong style="color: #3B82F6;">Réponse du propriétaire :</strong><br>
+        <span style="color: #374151;">{{ ownerResponse }}</span>
+    </div>
+
+    <p class="small-text" style="margin-top: 16px;">
+        Vous recevez cet email car vous avez laissé un avis sur cette laverie.
+    </p>
+{% endblock %}

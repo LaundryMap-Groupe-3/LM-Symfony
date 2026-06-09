@@ -15,11 +15,11 @@ class ProfessionalInteractionHistory
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'professionalInteractionHistories')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Admin $admin = null;
 
     #[ORM\ManyToOne(inversedBy: 'professionalInteractionHistories')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Professional $professional = null;
 
     #[ORM\Column(type: 'string', enumType: InteractionActionEnum::class)]

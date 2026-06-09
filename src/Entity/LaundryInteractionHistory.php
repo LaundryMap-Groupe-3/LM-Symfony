@@ -17,13 +17,13 @@ class LaundryInteractionHistory
     private int $id;
 
     #[ORM\ManyToOne(inversedBy: 'laundryInteractionHistories')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['laundry:read'])]
-    private Admin $admin;
+    private ?Admin $admin = null;
 
     #[ORM\ManyToOne(inversedBy: 'laundryInteractionHistories')]
-    #[ORM\JoinColumn(nullable: false)]
-    private Laundry $laundry;
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Laundry $laundry = null;
 
     #[ORM\Column(type: 'string', enumType: InteractionActionEnum::class)]
     #[Groups(['laundry:read'])]
@@ -42,23 +42,23 @@ class LaundryInteractionHistory
         return $this->id;
     }
 
-    public function getAdmin(): Admin
+    public function getAdmin(): ?Admin
     {
         return $this->admin;
     }
 
-    public function setAdmin(Admin $admin): static
+    public function setAdmin(?Admin $admin): static
     {
         $this->admin = $admin;
         return $this;
     }
 
-    public function getLaundry(): Laundry
+    public function getLaundry(): ?Laundry
     {
         return $this->laundry;
     }
 
-    public function setLaundry(Laundry $laundry): static
+    public function setLaundry(?Laundry $laundry): static
     {
         $this->laundry = $laundry;
         return $this;

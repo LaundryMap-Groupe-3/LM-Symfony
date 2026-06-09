@@ -46,10 +46,10 @@ class Professional
     #[ORM\JoinColumn(nullable: false)]
     private ?Address $address = null;
 
-    #[ORM\OneToMany(mappedBy: 'professional', targetEntity: Laundry::class)]
+    #[ORM\OneToMany(mappedBy: 'professional', targetEntity: Laundry::class, cascade: ['remove'])]
     private Collection $laundries;
 
-    #[ORM\OneToMany(mappedBy: 'professional', targetEntity: ProfessionalInteractionHistory::class)]
+    #[ORM\OneToMany(mappedBy: 'professional', targetEntity: ProfessionalInteractionHistory::class, cascade: ['remove'])]
     private Collection $professionalInteractionHistories;
 
     public function __construct()

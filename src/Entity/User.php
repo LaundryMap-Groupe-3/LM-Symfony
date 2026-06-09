@@ -58,16 +58,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToOne(mappedBy: 'user', cascade: ['persist', 'remove'])]
     private ?UserPreference $userPreference = null;
 
-    #[ORM\OneToMany(mappedBy: 'user', targetEntity: LaundryFavorite::class)]
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: LaundryFavorite::class, cascade: ['remove'])]
     private Collection $laundryFavorites;
 
-    #[ORM\OneToMany(mappedBy: 'user', targetEntity: LaundryNote::class)]
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: LaundryNote::class, cascade: ['remove'])]
     private Collection $laundryNotes;
 
-    #[ORM\OneToMany(mappedBy: 'user', targetEntity: LaundryNoteReport::class)]
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: LaundryNoteReport::class, cascade: ['remove'])]
     private Collection $laundryNoteReports;
 
-    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserInteractionHistory::class)]
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserInteractionHistory::class, cascade: ['remove'])]
     private Collection $userInteractionHistories;
 
     public function __construct()

@@ -6,12 +6,20 @@ use App\Entity\Admin;
 use App\Entity\LaundryClosure;
 use App\Entity\LaundryInteractionHistory;
 use App\Entity\ProfessionalInteractionHistory;
+use App\Entity\User;
+use App\Entity\UserInteractionHistory;
 use App\Enum\InteractionActionEnum;
 use App\Enum\LaundryEquipmentTypeEnum;
 use App\Enum\LaundryStatusEnum;
 use App\Enum\ProfessionalStatusEnum;
+use App\Enum\UserStatusEnum;
+use App\Entity\OffensiveWord;
+use App\Repository\LaundryNoteReportRepository;
+use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
+use App\Repository\OffensiveWordRepository;
 use App\Repository\ProfessionalRepository;
+use App\Repository\UserRepository;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -40,6 +48,130 @@ class AdminController extends AbstractController
         ]);
     }
 
+    #[Route('/api/admin/stats', name: 'api_admin_stats', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getStats(
+        UserRepository $userRepository,
+        ProfessionalRepository $professionalRepository,
+        LaundryRepository $laundryRepository,
+        LaundryNoteReportRepository $noteReportRepository,
+    ): JsonResponse {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        return $this->json([
+            'totalUsers' => $userRepository->countAllUsers(),
+            'totalProfessionals' => $professionalRepository->countAllProfessionals(),
+            'totalLaundries' => $laundryRepository->countAllLaundries(),
+            'totalReports' => $noteReportRepository->countDistinctReportedComments(),
+        ]);
+    }
+
+    #[Route('/api/admin/users', name: 'api_admin_users_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getAllUsers(
+        Request $request,
+        UserRepository $userRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+        $search = trim((string) $request->query->get('search', ''));
+
+        $users = $userRepository->findAllUsers($limit, $offset, $search);
+        $total = $userRepository->countAllUsersFiltered($search);
+
+        $data = array_map(static function ($u) {
+            return [
+                'id' => $u->getId(),
+                'email' => $u->getEmail(),
+                'firstName' => $u->getFirstName(),
+                'lastName' => $u->getLastName(),
+                'status' => $u->getStatus()->value,
+                'createdAt' => $u->getCreatedAt()->format('c'),
+            ];
+        }, $users);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
+    }
+
+    #[Route('/api/admin/professionals', name: 'api_admin_professionals_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getAllProfessionals(
+        Request $request,
+        ProfessionalRepository $professionalRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+        $search = trim((string) $request->query->get('search', ''));
+        $statusParam = trim((string) $request->query->get('status', ''));
+
+        $statusEnum = null;
+        if ($statusParam !== '') {
+            $statusEnum = ProfessionalStatusEnum::tryFrom($statusParam);
+        }
+
+        $professionals = $professionalRepository->findAllProfessionals($limit, $offset, $search, $statusEnum);
+        $total = $professionalRepository->countAllProfessionalsFiltered($search, $statusEnum);
+
+        $data = array_map(function ($professional) {
+            return [
+                'id' => $professional->getId(),
+                'siren' => $professional->getSiren(),
+                'status' => $professional->getStatus()->value,
+                'companyName' => $professional->getCompanyName(),
+                'user' => [
+                    'id' => $professional->getUser()->getId(),
+                    'email' => $professional->getUser()->getEmail(),
+                    'firstName' => $professional->getUser()->getFirstName(),
+                    'lastName' => $professional->getUser()->getLastName(),
+                    'createdAt' => $professional->getUser()->getCreatedAt()->format('c'),
+                ],
+                'address' => $professional->getAddress() ? [
+                    'street' => $professional->getAddress()->getStreet(),
+                    'postalCode' => $professional->getAddress()->getPostalCode(),
+                    'city' => $professional->getAddress()->getCity(),
+                ] : null,
+            ];
+        }, $professionals);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
+    }
+
     #[Route('/api/admin/professionals/pending/count', name: 'api_admin_professionals_pending_count', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getPendingProfessionalsCount(
@@ -59,7 +191,7 @@ class AdminController extends AbstractController
         }
 
         return $this->json([
-            'total' => $total,
+            'count' => $total,
             'response' => Response::HTTP_OK,
         ]);
     }
@@ -315,24 +447,210 @@ class AdminController extends AbstractController
         // Envoyer l'email de refus AVANT la suppression (pour avoir accès aux données du professional)
         $emailService->sendProfessionalRejectionEmail($professional, $reason);
 
-        // Supprimer les laveries (et leurs historiques) avant le professionnel pour éviter les violations FK
+        // Enregistrer l'action de rejet dans l'historique
+        $interaction = new ProfessionalInteractionHistory();
+        $interaction->setAdmin($user);
+        $interaction->setProfessional($professional);
+        $interaction->setAction(InteractionActionEnum::REJECT);
+        $interaction->setActionReason($reason);
+        $interaction->setCreatedAt(new \DateTime());
+        $em->persist($interaction);
+
+        // Supprimer les laveries avant le professionnel (les LaundryInteractionHistory sont conservés via SET NULL)
         foreach ($professional->getLaundries() as $laundry) {
-            foreach ($laundry->getLaundryInteractionHistories() as $laundryInteraction) {
-                $em->remove($laundryInteraction);
-            }
             $em->remove($laundry);
         }
 
-        // Supprimer les interactions d'historique du professionnel (orphelins)
-        foreach ($professional->getProfessionalInteractionHistories() as $interaction) {
-            $em->remove($interaction);
-        }
-
-        // Supprimer le professionnel et son utilisateur associé en cascade
+        // Supprimer le professionnel (les ProfessionalInteractionHistory sont conservés via SET NULL)
         $em->remove($professional);
         $em->flush();
 
         return $this->json(['message' => 'Professional rejected and account deleted successfully']);
+    }
+
+    #[Route('/api/admin/history', name: 'api_admin_history', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getHistory(
+        Request $request,
+        EntityManagerInterface $em
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $type = $request->query->get('type', 'all');
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = max(1, (int) $request->query->get('limit', 15));
+        $offset = ($page - 1) * $limit;
+
+        $entries = [];
+        $total = 0;
+
+        if ($type === 'professionals' || $type === 'all') {
+            $qb = $em->createQueryBuilder()
+                ->select('h')
+                ->from(ProfessionalInteractionHistory::class, 'h')
+                ->leftJoin('h.admin', 'a')
+                ->leftJoin('h.professional', 'p')
+                ->orderBy('h.createdAt', 'DESC');
+
+            if ($type === 'professionals') {
+                $qb->setFirstResult($offset)->setMaxResults($limit);
+                $total = (int) (clone $qb)->select('COUNT(h.id)')->getQuery()->getSingleScalarResult();
+                $qb->select('h');
+            }
+
+            foreach ($qb->getQuery()->getResult() as $h) {
+                $pro = $h->getProfessional();
+                $proName = $pro
+                    ? ($pro->getCompanyName() ?? ($pro->getUser() ? $pro->getUser()->getFirstName() . ' ' . $pro->getUser()->getLastName() : null))
+                    : null;
+                $entries[] = [
+                    'id' => $h->getId(),
+                    'type' => 'professional',
+                    'action' => $h->getAction()->value,
+                    'actionReason' => $h->getActionReason(),
+                    'createdAt' => $h->getCreatedAt()->format('c'),
+                    'admin' => $h->getAdmin() ? $h->getAdmin()->getEmail() : null,
+                    'target' => $proName,
+                ];
+            }
+        }
+
+        if ($type === 'laundries' || $type === 'all') {
+            $qb = $em->createQueryBuilder()
+                ->select('h')
+                ->from(LaundryInteractionHistory::class, 'h')
+                ->leftJoin('h.admin', 'a')
+                ->leftJoin('h.laundry', 'l')
+                ->orderBy('h.createdAt', 'DESC');
+
+            if ($type === 'laundries') {
+                $qb->setFirstResult($offset)->setMaxResults($limit);
+                $total = (int) (clone $qb)->select('COUNT(h.id)')->getQuery()->getSingleScalarResult();
+                $qb->select('h');
+            }
+
+            foreach ($qb->getQuery()->getResult() as $h) {
+                $entries[] = [
+                    'id' => $h->getId(),
+                    'type' => 'laundry',
+                    'action' => $h->getAction()->value,
+                    'actionReason' => $h->getActionReason(),
+                    'createdAt' => $h->getCreatedAt()->format('c'),
+                    'admin' => $h->getAdmin() ? $h->getAdmin()->getEmail() : null,
+                    'target' => $h->getLaundry() ? $h->getLaundry()->getEstablishmentName() : null,
+                ];
+            }
+        }
+
+        if ($type === 'users' || $type === 'all') {
+            $qb = $em->createQueryBuilder()
+                ->select('h')
+                ->from(\App\Entity\UserInteractionHistory::class, 'h')
+                ->leftJoin('h.admin', 'a')
+                ->leftJoin('h.user', 'u')
+                ->orderBy('h.createdAt', 'DESC');
+
+            if ($type === 'users') {
+                $qb->setFirstResult($offset)->setMaxResults($limit);
+                $total = (int) (clone $qb)->select('COUNT(h.id)')->getQuery()->getSingleScalarResult();
+                $qb->select('h');
+            }
+
+            foreach ($qb->getQuery()->getResult() as $h) {
+                $u = $h->getUser();
+                $entries[] = [
+                    'id' => $h->getId(),
+                    'type' => 'user',
+                    'action' => $h->getAction()->value,
+                    'actionReason' => $h->getActionReason(),
+                    'createdAt' => $h->getCreatedAt()->format('c'),
+                    'admin' => $h->getAdmin() ? $h->getAdmin()->getEmail() : null,
+                    'target' => $u ? $u->getFirstName() . ' ' . $u->getLastName() : null,
+                ];
+            }
+        }
+
+        if ($type === 'all') {
+            usort($entries, fn($a, $b) => strcmp($b['createdAt'], $a['createdAt']));
+            $total = count($entries);
+            $entries = array_slice($entries, $offset, $limit);
+        }
+
+        return $this->json([
+            'data' => $entries,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
+    }
+
+    #[Route('/api/admin/laundries', name: 'api_admin_laundries_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getAllLaundries(
+        Request $request,
+        LaundryRepository $laundryRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+        $search = trim((string) $request->query->get('search', ''));
+        $statusParam = trim((string) $request->query->get('status', ''));
+
+        $statusEnum = null;
+        if ($statusParam !== '') {
+            $statusEnum = LaundryStatusEnum::tryFrom($statusParam);
+        }
+
+        $laundries = $laundryRepository->findAllLaundries($limit, $offset, $search, $statusEnum);
+        $total = $laundryRepository->countAllLaundriesFiltered($search, $statusEnum);
+
+        $data = array_map(function ($laundry) {
+            $address = $laundry->getAddress();
+            $professional = $laundry->getProfessional();
+            $professionalUser = $professional->getUser();
+
+            return [
+                'id' => $laundry->getId(),
+                'establishmentName' => $laundry->getEstablishmentName(),
+                'status' => $laundry->getStatus()->value,
+                'contactEmail' => $laundry->getContactEmail(),
+                'createdAt' => $laundry->getCreatedAt()->format('c'),
+                'address' => $address ? [
+                    'street' => $address->getStreet(),
+                    'postalCode' => $address->getPostalCode(),
+                    'city' => $address->getCity(),
+                ] : null,
+                'professional' => [
+                    'id' => $professional->getId(),
+                    'firstName' => $professionalUser->getFirstName(),
+                    'lastName' => $professionalUser->getLastName(),
+                    'email' => $professionalUser->getEmail(),
+                ],
+            ];
+        }, $laundries);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / $limit),
+            ],
+        ]);
     }
 
     #[Route('/api/admin/laundries/{id}', name: 'api_admin_laundries_details', methods: ['GET'])]
@@ -704,5 +1022,418 @@ class AdminController extends AbstractController
             'fidelity' => 'professional.laundry_form.payment_fidelity',
             default => null,
         };
+    }
+
+    #[Route('/api/admin/offensive-words', name: 'api_admin_offensive_words_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getOffensiveWords(
+        Request $request,
+        OffensiveWordRepository $offensiveWordRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+        $search = trim((string) $request->query->get('search', ''));
+
+        $words = $offensiveWordRepository->findAllPaginated($limit, $offset, $search);
+        $total = $offensiveWordRepository->countAllFiltered($search);
+
+        $data = array_map(static fn(OffensiveWord $w) => [
+            'id' => $w->getId(),
+            'label' => $w->getLabel(),
+        ], $words);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / max(1, $limit)),
+            ],
+        ]);
+    }
+
+    #[Route('/api/admin/offensive-words', name: 'api_admin_offensive_words_create', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function createOffensiveWord(
+        Request $request,
+        OffensiveWordRepository $offensiveWordRepository,
+        EntityManagerInterface $entityManager
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        $label = is_array($payload) ? trim((string) ($payload['label'] ?? '')) : '';
+
+        if ($label === '') {
+            return $this->json(['errors' => ['label' => 'validation.label_required']], 400);
+        }
+        if (strlen($label) > 255) {
+            return $this->json(['errors' => ['label' => 'validation.label_max_length']], 400);
+        }
+        if ($offensiveWordRepository->findOneByLabelInsensitive($label) !== null) {
+            return $this->json(['errors' => ['label' => 'validation.label_already_exists']], 409);
+        }
+
+        $word = new OffensiveWord();
+        $word->setLabel($label);
+
+        $entityManager->persist($word);
+        $entityManager->flush();
+
+        return $this->json([
+            'data' => [
+                'id' => $word->getId(),
+                'label' => $word->getLabel(),
+            ],
+        ], 201);
+    }
+
+    #[Route('/api/admin/offensive-words/{id}', name: 'api_admin_offensive_words_update', methods: ['PUT'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function updateOffensiveWord(
+        Request $request,
+        int $id,
+        OffensiveWordRepository $offensiveWordRepository,
+        EntityManagerInterface $entityManager
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $word = $offensiveWordRepository->find($id);
+        if (!$word) {
+            return $this->json(['error' => 'errors.offensive_word_not_found'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            return $this->json(['error' => 'errors.invalid_payload'], 400);
+        }
+
+        if (array_key_exists('label', $payload)) {
+            $label = trim((string) $payload['label']);
+            if ($label === '') {
+                return $this->json(['errors' => ['label' => 'validation.label_required']], 400);
+            }
+            if (strlen($label) > 255) {
+                return $this->json(['errors' => ['label' => 'validation.label_max_length']], 400);
+            }
+            $existing = $offensiveWordRepository->findOneByLabelInsensitive($label);
+            if ($existing !== null && $existing->getId() !== $word->getId()) {
+                return $this->json(['errors' => ['label' => 'validation.label_already_exists']], 409);
+            }
+            $word->setLabel($label);
+        }
+
+        $entityManager->flush();
+
+        return $this->json([
+            'data' => [
+                'id' => $word->getId(),
+                'label' => $word->getLabel(),
+            ],
+        ]);
+    }
+
+    #[Route('/api/admin/offensive-words/{id}', name: 'api_admin_offensive_words_delete', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function deleteOffensiveWord(
+        int $id,
+        OffensiveWordRepository $offensiveWordRepository,
+        EntityManagerInterface $entityManager
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $word = $offensiveWordRepository->find($id);
+        if (!$word) {
+            return $this->json(['error' => 'errors.offensive_word_not_found'], 404);
+        }
+
+        $entityManager->remove($word);
+        $entityManager->flush();
+
+        return $this->json(['message' => 'offensive word removed'], 200);
+    }
+
+    #[Route('/api/admin/comment-reports', name: 'api_admin_comment_reports_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getCommentReports(
+        Request $request,
+        LaundryNoteReportRepository $laundryNoteReportRepository,
+        LaundryNoteRepository $laundryNoteRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $offset = ($page - 1) * $limit;
+
+        $rows = $laundryNoteReportRepository->findReportedCommentIdsPaginated($limit, $offset);
+        $total = $laundryNoteReportRepository->countDistinctReportedComments();
+
+        $data = array_map(static function (array $row) use ($laundryNoteRepository) {
+            $laundryNote = $laundryNoteRepository->find($row['laundryNoteId']);
+            $author = $laundryNote?->getUser();
+
+            return [
+                'laundryNoteId' => $row['laundryNoteId'],
+                'reportCount' => $row['reportCount'],
+                'lastReportedAt' => $row['lastReportedAt']->format('c'),
+                'laundryNote' => $laundryNote ? [
+                    'id' => $laundryNote->getId(),
+                    'comment' => $laundryNote->getComment(),
+                    'rating' => $laundryNote->getRating(),
+                    'commentDeletedAt' => $laundryNote->getCommentDeletedAt()?->format('c'),
+                    'commentDeletedReason' => $laundryNote->getCommentDeletedReason(),
+                ] : null,
+                'author' => $author ? [
+                    'id' => $author->getId(),
+                    'firstName' => $author->getFirstName(),
+                    'lastName' => $author->getLastName(),
+                    'email' => $author->getEmail(),
+                    'status' => $author->getStatus()->value,
+                ] : null,
+            ];
+        }, $rows);
+
+        return $this->json([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / max(1, $limit)),
+            ],
+        ]);
+    }
+
+    #[Route('/api/admin/comment-reports/{laundryNoteId}', name: 'api_admin_comment_reports_show', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function getCommentReportDetails(
+        int $laundryNoteId,
+        LaundryNoteRepository $laundryNoteRepository,
+        LaundryNoteReportRepository $laundryNoteReportRepository
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $laundryNote = $laundryNoteRepository->find($laundryNoteId);
+        if (!$laundryNote) {
+            return $this->json(['error' => 'errors.laundry_note_not_found'], 404);
+        }
+
+        $author = $laundryNote->getUser();
+        $reports = $laundryNoteReportRepository->findByLaundryNote($laundryNote);
+
+        $data = array_map(static function (\App\Entity\LaundryNoteReport $r) {
+            $reporter = $r->getUser();
+
+            return [
+                'reporterId' => $reporter->getId(),
+                'reason' => $r->getReason()->value,
+                'comment' => $r->getComment(),
+                'createdAt' => $r->getCreatedAt()->format('c'),
+                'reporter' => [
+                    'id' => $reporter->getId(),
+                    'firstName' => $reporter->getFirstName(),
+                    'lastName' => $reporter->getLastName(),
+                ],
+            ];
+        }, $reports);
+
+        return $this->json([
+            'laundryNote' => [
+                'id' => $laundryNote->getId(),
+                'comment' => $laundryNote->getComment(),
+                'rating' => $laundryNote->getRating(),
+                'commentDeletedAt' => $laundryNote->getCommentDeletedAt()?->format('c'),
+                'commentDeletedReason' => $laundryNote->getCommentDeletedReason(),
+            ],
+            'author' => [
+                'id' => $author->getId(),
+                'firstName' => $author->getFirstName(),
+                'lastName' => $author->getLastName(),
+                'email' => $author->getEmail(),
+                'status' => $author->getStatus()->value,
+            ],
+            'reports' => $data,
+        ]);
+    }
+
+    #[Route('/api/admin/comment-reports/{laundryNoteId}/dismiss', name: 'api_admin_comment_reports_dismiss', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function dismissCommentReports(
+        int $laundryNoteId,
+        LaundryNoteRepository $laundryNoteRepository,
+        LaundryNoteReportRepository $laundryNoteReportRepository,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $laundryNote = $laundryNoteRepository->find($laundryNoteId);
+        if (!$laundryNote) {
+            return $this->json(['error' => 'errors.laundry_note_not_found'], 404);
+        }
+
+        foreach ($laundryNoteReportRepository->findByLaundryNote($laundryNote) as $report) {
+            $em->remove($report);
+        }
+
+        $em->flush();
+
+        return $this->json(['message' => 'comment kept and reports dismissed'], 200);
+    }
+
+    #[Route('/api/admin/comment-reports/{laundryNoteId}/block-comment', name: 'api_admin_comment_reports_block_comment', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function blockReportedComment(
+        Request $request,
+        int $laundryNoteId,
+        LaundryNoteRepository $laundryNoteRepository,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $laundryNote = $laundryNoteRepository->find($laundryNoteId);
+        if (!$laundryNote) {
+            return $this->json(['error' => 'errors.laundry_note_not_found'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $reason = is_array($data) ? trim((string) ($data['reason'] ?? '')) : '';
+
+        if ($reason === '') {
+            return $this->json(['error' => 'Block reason is required'], 400);
+        }
+
+        $laundryNote->setComment(null);
+        $laundryNote->setCommentedAt(null);
+        $laundryNote->setCommentDeletedReason($reason);
+        $laundryNote->setCommentDeletedAt(new \DateTime());
+
+        $interaction = new UserInteractionHistory();
+        $interaction->setAdmin($user);
+        $interaction->setUser($laundryNote->getUser());
+        $interaction->setAction(InteractionActionEnum::BLOCK_CONTENT);
+        $interaction->setActionReason($reason);
+        $interaction->setCreatedAt(new \DateTime());
+        $em->persist($interaction);
+
+        $em->flush();
+
+        return $this->json(['message' => 'comment blocked'], 200);
+    }
+
+    #[Route('/api/admin/comment-reports/{laundryNoteId}/block-author', name: 'api_admin_comment_reports_block_author', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function blockReportedCommentAuthor(
+        Request $request,
+        int $laundryNoteId,
+        LaundryNoteRepository $laundryNoteRepository,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $laundryNote = $laundryNoteRepository->find($laundryNoteId);
+        if (!$laundryNote) {
+            return $this->json(['error' => 'errors.laundry_note_not_found'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $reason = is_array($data) ? trim((string) ($data['reason'] ?? '')) : '';
+
+        if ($reason === '') {
+            return $this->json(['error' => 'Block reason is required'], 400);
+        }
+
+        $author = $laundryNote->getUser();
+        $author->setStatus(UserStatusEnum::SUSPENDED);
+
+        $interaction = new UserInteractionHistory();
+        $interaction->setAdmin($user);
+        $interaction->setUser($author);
+        $interaction->setAction(InteractionActionEnum::SUSPEND);
+        $interaction->setActionReason($reason);
+        $interaction->setCreatedAt(new \DateTime());
+        $em->persist($interaction);
+
+        $em->flush();
+
+        return $this->json(['message' => 'author suspended'], 200);
+    }
+
+    #[Route('/api/admin/users/{id}/toggle-block', name: 'api_admin_users_toggle_block', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function toggleUserBlock(
+        int $id,
+        UserRepository $userRepository,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $admin = $this->getUser();
+        if (!$admin instanceof Admin) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $targetUser = $userRepository->find($id);
+        if (!$targetUser) {
+            return $this->json(['error' => 'errors.user_not_found'], 404);
+        }
+
+        $isCurrentlySuspended = $targetUser->getStatus() === UserStatusEnum::SUSPENDED;
+
+        $targetUser->setStatus($isCurrentlySuspended ? UserStatusEnum::VERIFIED : UserStatusEnum::SUSPENDED);
+
+        $interaction = new UserInteractionHistory();
+        $interaction->setAdmin($admin);
+        $interaction->setUser($targetUser);
+        $interaction->setAction($isCurrentlySuspended ? InteractionActionEnum::UNSUSPEND : InteractionActionEnum::SUSPEND);
+        $interaction->setActionReason('');
+        $interaction->setCreatedAt(new \DateTime());
+        $em->persist($interaction);
+
+        $em->flush();
+
+        return $this->json([
+            'message' => $isCurrentlySuspended ? 'user unblocked' : 'user blocked',
+            'status' => $targetUser->getStatus()->value,
+        ], 200);
     }
 }

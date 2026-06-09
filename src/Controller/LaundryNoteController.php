@@ -2,11 +2,15 @@
 
 namespace App\Controller;
 
-use App\Entity\Laundry;
 use App\Entity\LaundryNote;
+use App\Entity\LaundryNoteReport;
 use App\Entity\User;
+use App\Enum\LaundryNoteReportReasonEnum;
+use App\Repository\LaundryNoteReportRepository;
 use App\Repository\LaundryNoteRepository;
 use App\Repository\LaundryRepository;
+use App\Service\ContentModerationService;
+use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,9 +23,12 @@ class LaundryNoteController extends AbstractController
 {
     public function __construct(
         private readonly LaundryNoteRepository $laundryNoteRepository,
+        private readonly LaundryNoteReportRepository $laundryNoteReportRepository,
         private readonly LaundryRepository $laundryRepository,
         private NormalizerInterface $serializer,
         private EntityManagerInterface $entityManager,
+        private EmailService $emailService,
+        private ContentModerationService $contentModerationService,
     )
     {
     }
@@ -216,6 +223,186 @@ class LaundryNoteController extends AbstractController
         }
     }
 
+    #[Route('/api/note/{id}/response', name: 'api_laundry_note_response_add', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    public function addResponse(Request $request, int $id): JsonResponse
+    {
+        $professional = $this->getUser();
+
+        $laundryNote = $this->laundryNoteRepository->find($id);
+        if (!$laundryNote) {
+            return $this->json(['message' => 'errors.laundry_note_not_found'], 404);
+        }
+
+        $laundry = $laundryNote->getLaundry();
+        if ($laundry->getProfessional()->getUser() !== $professional) {
+            return $this->json(['message' => 'errors.forbidden'], 403);
+        }
+
+        if ($laundryNote->getResponse() !== null) {
+            return $this->json(['message' => 'errors.response_already_exists'], 409);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        $response = trim($payload['response'] ?? '');
+
+        if ($response === '') {
+            return $this->json(['errors' => ['response' => 'validation.response_required']], 400);
+        }
+        if (strlen($response) > 500) {
+            return $this->json(['errors' => ['response' => 'validation.response_max_length']], 400);
+        }
+        if ($this->contentModerationService->containsOffensiveContent($response)) {
+            return $this->json(['errors' => ['response' => 'validation.response_offensive_content']], 400);
+        }
+
+        $laundryNote->setResponse($response);
+        $laundryNote->setRespondedAt(new \DateTime());
+        $this->entityManager->flush();
+
+        $author = $laundryNote->getUser();
+        $pref = $author->getUserPreference();
+        if ($pref === null || $pref->isNotifications()) {
+            try {
+                $this->emailService->sendReviewResponseEmail($laundryNote, false);
+            } catch (\Exception) {}
+        }
+
+        $data = $this->serializer->normalize($laundryNote, null, ['groups' => ['laundry:read']]);
+        return $this->json(['laundryNote' => $data], 201);
+    }
+
+    #[Route('/api/note/{id}/response', name: 'api_laundry_note_response_update', methods: ['PUT'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    public function updateResponse(Request $request, int $id): JsonResponse
+    {
+        try {
+            $professional = $this->getUser();
+
+            $laundryNote = $this->laundryNoteRepository->find($id);
+            if (!$laundryNote) {
+                return $this->json(['message' => 'errors.laundry_note_not_found'], 404);
+            }
+
+            $laundry = $laundryNote->getLaundry();
+            if ($laundry->getProfessional()->getUser() !== $professional) {
+                return $this->json(['message' => 'errors.forbidden'], 403);
+            }
+
+            if ($laundryNote->getResponse() === null) {
+                return $this->json(['message' => 'errors.response_not_found'], 404);
+            }
+
+            $payload = json_decode($request->getContent(), true);
+            $response = trim($payload['response'] ?? '');
+
+            if ($response === '') {
+                return $this->json(['errors' => ['response' => 'validation.response_required']], 400);
+            }
+            if (strlen($response) > 500) {
+                return $this->json(['errors' => ['response' => 'validation.response_max_length']], 400);
+            }
+            if ($this->contentModerationService->containsOffensiveContent($response)) {
+                return $this->json(['errors' => ['response' => 'validation.response_offensive_content']], 400);
+            }
+
+            $laundryNote->setResponse($response);
+            $laundryNote->setRespondedAt(new \DateTime());
+            $this->entityManager->flush();
+
+            $author = $laundryNote->getUser();
+            $pref = $author->getUserPreference();
+            if ($pref === null || $pref->isNotifications()) {
+                try {
+                    $this->emailService->sendReviewResponseEmail($laundryNote, true);
+                } catch (\Exception) {}
+            }
+
+            $data = $this->serializer->normalize($laundryNote, null, ['groups' => ['laundry:read']]);
+            return $this->json(['laundryNote' => $data], 200);
+        } catch (\Exception $e) {
+            return $this->json(['message' => 'errors.internal', 'detail' => $e->getMessage()], 500);
+        }
+    }
+
+    #[Route('/api/note/{id}/response', name: 'api_laundry_note_response_remove', methods: ['DELETE'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    public function removeResponse(int $id): JsonResponse
+    {
+        $professional = $this->getUser();
+
+        $laundryNote = $this->laundryNoteRepository->find($id);
+        if (!$laundryNote) {
+            return $this->json(['message' => 'errors.laundry_note_not_found'], 404);
+        }
+
+        $laundry = $laundryNote->getLaundry();
+        if ($laundry->getProfessional()->getUser() !== $professional) {
+            return $this->json(['message' => 'errors.forbidden'], 403);
+        }
+
+        $laundryNote->setResponse(null);
+        $laundryNote->setRespondedAt(null);
+        $this->entityManager->flush();
+
+        return $this->json(['message' => 'response removed'], 200);
+    }
+
+    #[Route('/api/note/{id}/report', name: 'api_laundry_note_report', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    public function reportComment(Request $request, int $id): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'errors.unauthorized'], 403);
+        }
+
+        $laundryNote = $this->laundryNoteRepository->find($id);
+        if (!$laundryNote) {
+            return $this->json(['message' => 'errors.laundry_note_not_found'], 404);
+        }
+
+        if ($laundryNote->getUser() === $user) {
+            return $this->json(['error' => 'errors.cannot_report_own_comment'], 403);
+        }
+
+        if ($this->laundryNoteReportRepository->findOneBy(['laundryNote' => $laundryNote, 'user' => $user])) {
+            return $this->json(['error' => 'errors.report_already_exists'], 409);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            return $this->json(['error' => 'errors.invalid_payload'], 400);
+        }
+
+        $reasonValue = $payload['reason'] ?? null;
+        $reason = is_string($reasonValue) ? LaundryNoteReportReasonEnum::tryFrom($reasonValue) : null;
+        if ($reason === null) {
+            return $this->json(['errors' => ['reason' => 'validation.reason_invalid']], 400);
+        }
+
+        $comment = $payload['comment'] ?? null;
+        if ($comment !== null && $comment !== '') {
+            if (strlen($comment) > 500) {
+                return $this->json(['errors' => ['comment' => 'validation.comment_max_length']], 400);
+            }
+        } else {
+            $comment = null;
+        }
+
+        $report = new LaundryNoteReport();
+        $report->setLaundryNote($laundryNote);
+        $report->setUser($user);
+        $report->setReason($reason);
+        $report->setComment($comment);
+        $report->setCreatedAt(new \DateTime());
+
+        $this->entityManager->persist($report);
+        $this->entityManager->flush();
+
+        return $this->json(['message' => 'report created'], 201);
+    }
+
     private function validateLaundryNotePayload(array $payload): array
     {
         $errors = [];
@@ -233,6 +420,8 @@ class LaundryNoteController extends AbstractController
 
         if ($comment !== null && strlen($comment) > 500) {
             $errors['comment'] = 'validation.comment_max_length';
+        } elseif ($comment !== null && $this->contentModerationService->containsOffensiveContent($comment)) {
+            $errors['comment'] = 'validation.comment_offensive_content';
         }
 
         return $errors;
