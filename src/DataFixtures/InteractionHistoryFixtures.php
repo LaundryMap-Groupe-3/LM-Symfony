@@ -5,8 +5,10 @@ namespace App\DataFixtures;
 use App\Entity\Admin;
 use App\Entity\Laundry;
 use App\Entity\Professional;
+use App\Entity\User;
 use App\Entity\LaundryInteractionHistory;
 use App\Entity\ProfessionalInteractionHistory;
+use App\Entity\UserInteractionHistory;
 use App\Enum\InteractionActionEnum;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -33,6 +35,10 @@ class InteractionHistoryFixtures extends Fixture implements DependentFixtureInte
         $laundry2 = $manager->getRepository(Laundry::class)->findOneBy(['establishmentName' => 'Lille Clean Hub']);
         $laundryBatignolles = $manager->getRepository(Laundry::class)->findOneBy(['establishmentName' => 'Laverie Batignolles']);
         $laundryLatin = $manager->getRepository(Laundry::class)->findOneBy(['establishmentName' => 'Latin Quarter Wash']);
+
+        // Utilisateurs
+        // user1 (Marie Dupont) : bloquée par admin1 puis débloquée par admin1
+        $user1 = $manager->getRepository(User::class)->findOneBy(['email' => 'marie.dupont@example.com']);
 
         // --- ProfessionalInteractionHistory ---
 
@@ -103,6 +109,27 @@ class InteractionHistoryFixtures extends Fixture implements DependentFixtureInte
             $manager->persist($h7);
         }
 
+        // --- UserInteractionHistory ---
+
+        // Marie Dupont : compte bloqué puis débloqué par admin1
+        if ($user1) {
+            $h8 = new UserInteractionHistory();
+            $h8->setAdmin($admin1);
+            $h8->setUser($user1);
+            $h8->setAction(InteractionActionEnum::SUSPEND);
+            $h8->setActionReason('Compte bloqué suite à des signalements pour comportement inapproprié.');
+            $h8->setCreatedAt(new \DateTime('2026-04-02 09:00:00'));
+            $manager->persist($h8);
+
+            $h9 = new UserInteractionHistory();
+            $h9->setAdmin($admin1);
+            $h9->setUser($user1);
+            $h9->setAction(InteractionActionEnum::UNSUSPEND);
+            $h9->setActionReason('Compte débloqué après vérification, situation résolue.');
+            $h9->setCreatedAt(new \DateTime('2026-04-10 15:30:00'));
+            $manager->persist($h9);
+        }
+
         $manager->flush();
     }
 
@@ -112,6 +139,7 @@ class InteractionHistoryFixtures extends Fixture implements DependentFixtureInte
             AdminFixtures::class,
             ProfessionalFixtures::class,
             LaundryFixtures::class,
+            UserFixtures::class,
         ];
     }
 }
