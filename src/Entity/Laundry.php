@@ -53,6 +53,26 @@ class Laundry
     #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?string $description = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['laundry:read'])]
+    private ?string $websiteLink = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['laundry:read'])]
+    private ?string $facebookLink = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['laundry:read'])]
+    private ?string $instagramLink = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['laundry:read'])]
+    private ?string $xLink = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['laundry:read'])]
+    private ?string $linkedinLink = null;
+
     #[ORM\Column(type: 'datetime')]
     #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private \DateTimeInterface $createdAt;
@@ -204,6 +224,61 @@ class Laundry
     public function setDescription(?string $description): static
     {
         $this->description = $description;
+        return $this;
+    }
+
+    public function getWebsiteLink(): ?string
+    {
+        return $this->websiteLink;
+    }
+
+    public function setWebsiteLink(?string $websiteLink): static
+    {
+        $this->websiteLink = $websiteLink;
+        return $this;
+    }
+
+    public function getFacebookLink(): ?string
+    {
+        return $this->facebookLink;
+    }
+
+    public function setFacebookLink(?string $facebookLink): static
+    {
+        $this->facebookLink = $facebookLink;
+        return $this;
+    }
+
+    public function getInstagramLink(): ?string
+    {
+        return $this->instagramLink;
+    }
+
+    public function setInstagramLink(?string $instagramLink): static
+    {
+        $this->instagramLink = $instagramLink;
+        return $this;
+    }
+
+    public function getXLink(): ?string
+    {
+        return $this->xLink;
+    }
+
+    public function setXLink(?string $xLink): static
+    {
+        $this->xLink = $xLink;
+        return $this;
+    }
+
+    public function getLinkedinLink(): ?string
+    {
+        return $this->linkedinLink;
+    }
+
+    public function setLinkedinLink(?string $linkedinLink): static
+    {
+        $this->linkedinLink = $linkedinLink;
         return $this;
     }
 
