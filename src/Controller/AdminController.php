@@ -910,6 +910,11 @@ class AdminController extends AbstractController
             'dryingPrice10kg' => $prices['dryingPrice10kg'] ?? '',
             'dryingPrice12kgPlus' => $prices['dryingPrice12kgPlus'] ?? '',
             'rejectionReason' => $latestRejectionReason,
+            'websiteLink' => $laundry->getWebsiteLink(),
+            'facebookLink' => $laundry->getFacebookLink(),
+            'instagramLink' => $laundry->getInstagramLink(),
+            'xLink' => $laundry->getXLink(),
+            'linkedinLink' => $laundry->getLinkedinLink(),
         ];
 
         return $this->json(['data' => $data]);
