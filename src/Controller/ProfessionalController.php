@@ -729,6 +729,32 @@ class ProfessionalController extends AbstractController
             $laundry->setDescription($description !== '' ? $description : null);
         }
 
+        if (array_key_exists('websiteLink', $payload)) {
+            $websiteLink = trim((string) ($payload['websiteLink'] ?? ''));
+            $laundry->setWebsiteLink($websiteLink !== '' ? $websiteLink : null);
+        }
+
+        if (array_key_exists('facebookLink', $payload)) {
+            $websiteLink = trim((string) ($payload['facebookLink'] ?? ''));
+            $laundry->setFacebookLink($websiteLink !== '' ? $websiteLink : null);
+        }
+
+        if (array_key_exists('instagramLink', $payload)) {
+            $websiteLink = trim((string) ($payload['instagramLink'] ?? ''));
+            $laundry->setInstagramLink($websiteLink !== '' ? $websiteLink : null);
+        }
+
+        if (array_key_exists('twitterLink', $payload)) {
+            $websiteLink = trim((string) ($payload['twitterLink'] ?? ''));
+            $laundry->setTwitterLink($websiteLink !== '' ? $websiteLink : null);
+        }
+
+        if (array_key_exists('linkedinLink', $payload)) {
+            $websiteLink = trim((string) ($payload['linkedinLink'] ?? ''));
+            $laundry->setLinkedinLink($websiteLink !== '' ? $websiteLink : null);
+        }
+
+
         if (array_key_exists('contactPhone', $payload)) {
             $contactPhone = trim((string) ($payload['contactPhone'] ?? ''));
             $professional->setPhone($contactPhone !== '' ? $contactPhone : null);
@@ -1319,6 +1345,11 @@ class ProfessionalController extends AbstractController
                 'mimeType' => $logo->getMimeType(),
                 'weight' => $logo->getWeight(),
             ] : null,
+            'websiteLink' => $laundry->getWebsiteLink(),
+            'facebookLink' => $laundry->getFacebookLink(),
+            'instagramLink' => $laundry->getInstagramLink(),
+            'twitterLink' => $laundry->getTwitterLink(),
+            'linkedinLink' => $laundry->getLinkedinLink(),
             'medias' => $medias,
             'createdAt' => $laundry->getCreatedAt()?->format('c') ?? '',
             'updatedAt' => $laundry->getUpdatedAt()?->format('c') ?? '',
