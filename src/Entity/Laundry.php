@@ -53,6 +53,26 @@ class Laundry
     #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private ?string $description = null;
 
+    #[ORM\Column(nullable: true)]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    private ?string $websiteLink = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    private ?string $facebookLink = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    private ?string $instagramLink = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    private ?string $twitterLink = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['laundry:read', 'favorite-laundry:read'])]
+    private ?string $linkedinLink = null;
+
     #[ORM\Column(type: 'datetime')]
     #[Groups(['laundry:read', 'favorite-laundry:read'])]
     private \DateTimeInterface $createdAt;
@@ -204,6 +224,62 @@ class Laundry
     public function setDescription(?string $description): static
     {
         $this->description = $description;
+        return $this;
+    }
+
+
+    public function getWebsiteLink(): ?string
+    {
+        return $this->websiteLink;
+    }
+
+    public function setWebsiteLink(?string $websiteLink): static
+    {
+        $this->websiteLink = $websiteLink;
+        return $this;
+    }
+
+    public function getFacebookLink(): ?string
+    {
+        return $this->facebookLink;
+    }
+
+    public function setFacebookLink(?string $facebookLink): static
+    {
+        $this->facebookLink = $facebookLink;
+        return $this;
+    }
+
+    public function getInstagramLink(): ?string
+    {
+        return $this->instagramLink;
+    }
+
+    public function setInstagramLink(?string $instagramLink): static
+    {
+        $this->instagramLink = $instagramLink;
+        return $this;
+    }
+
+    public function getTwitterLink(): ?string
+    {
+        return $this->twitterLink;
+    }
+
+    public function setTwitterLink(?string $twitterLink): static
+    {
+        $this->twitterLink = $twitterLink;
+        return $this;
+    }
+
+        public function getLinkedinLink(): ?string
+    {
+        return $this->linkedinLink;
+    }
+
+    public function setLinkedinLink(?string $linkedinLink): static
+    {
+        $this->linkedinLink = $linkedinLink;
         return $this;
     }
 
