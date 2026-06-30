@@ -555,8 +555,29 @@ class ProfessionalController extends AbstractController
         }
 
         $this->validateOpeningHoursPayload($payload, $errors);
+        $this->validateSocialMediaLinks($payload, $errors);
 
         return $errors;
+    }
+
+    private function validateSocialMediaLinks(array $payload, array &$errors): void
+    {
+        $socialLinks = [
+            'websiteLink' => 'validation.url_invalid',
+            'facebookLink' => 'validation.url_invalid',
+            'instagramLink' => 'validation.url_invalid',
+            'xLink' => 'validation.url_invalid',
+            'linkedinLink' => 'validation.url_invalid',
+        ];
+
+        foreach ($socialLinks as $fieldName => $errorKey) {
+            if (isset($payload[$fieldName]) && $payload[$fieldName] !== null) {
+                $url = trim((string) $payload[$fieldName]);
+                if ($url !== '' && !filter_var($url, FILTER_VALIDATE_URL)) {
+                    $errors[$fieldName] = $errorKey;
+                }
+            }
+        }
     }
 
     private function validateOpeningHoursPayload(array $payload, array &$errors): void
@@ -727,6 +748,31 @@ class ProfessionalController extends AbstractController
         if (array_key_exists('description', $payload)) {
             $description = trim((string) ($payload['description'] ?? ''));
             $laundry->setDescription($description !== '' ? $description : null);
+        }
+
+        if (array_key_exists('websiteLink', $payload)) {
+            $websiteLink = trim((string) ($payload['websiteLink'] ?? ''));
+            $laundry->setWebsiteLink($websiteLink !== '' ? $websiteLink : null);
+        }
+
+        if (array_key_exists('facebookLink', $payload)) {
+            $facebookLink = trim((string) ($payload['facebookLink'] ?? ''));
+            $laundry->setFacebookLink($facebookLink !== '' ? $facebookLink : null);
+        }
+
+        if (array_key_exists('instagramLink', $payload)) {
+            $instagramLink = trim((string) ($payload['instagramLink'] ?? ''));
+            $laundry->setInstagramLink($instagramLink !== '' ? $instagramLink : null);
+        }
+
+        if (array_key_exists('xLink', $payload)) {
+            $xLink = trim((string) ($payload['xLink'] ?? ''));
+            $laundry->setXLink($xLink !== '' ? $xLink : null);
+        }
+
+        if (array_key_exists('linkedinLink', $payload)) {
+            $linkedinLink = trim((string) ($payload['linkedinLink'] ?? ''));
+            $laundry->setLinkedinLink($linkedinLink !== '' ? $linkedinLink : null);
         }
 
         if (array_key_exists('contactPhone', $payload)) {
@@ -1304,6 +1350,11 @@ class ProfessionalController extends AbstractController
             'contactPhone' => $professional?->getPhone() ?? '',
             'contactEmail' => $laundry->getContactEmail() ?? '',
             'description' => $laundry->getDescription() ?? '',
+            'websiteLink' => $laundry->getWebsiteLink() ?? '',
+            'facebookLink' => $laundry->getFacebookLink() ?? '',
+            'instagramLink' => $laundry->getInstagramLink() ?? '',
+            'xLink' => $laundry->getXLink() ?? '',
+            'linkedinLink' => $laundry->getLinkedinLink() ?? '',
             'status' => $laundry->getStatus()?->value ?? '',
             'address' => [
                 'address' => $address?->getAddress() ?? '',
